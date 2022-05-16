@@ -6,6 +6,7 @@ use Oilstone\ApiTypesenseIntegration\Typesense;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Str;
@@ -296,7 +297,7 @@ class TypesenseEngine extends Engine
         return $model->newCollection(
             collect($results['hits'])
                 ->pluck('document')
-                ->map(fn (array $result) => SearchModel::make($model->getTable(), $result, $model->getSchema()))
+                ->map(fn (array $result) => SearchModel::make($model->getTable(), Arr::undot($result), $model->getSchema()))
                 ->all()
         );
     }

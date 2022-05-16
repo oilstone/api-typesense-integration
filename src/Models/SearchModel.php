@@ -6,6 +6,7 @@ use Api\Schema\Property;
 use Api\Schema\Schema;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
 use Laravel\Scout\Builder;
@@ -62,35 +63,36 @@ class SearchModel extends EloquentModel
     public function toSearchableArray()
     {
         $attributes = [];
-        $indexProperties = collect($this->getIndexFields());
+        $values = $this->getAttributes();
 
-        foreach ($this->getAttributes() as $key => $value) {
-            if ($property = $this->getIndexProperty($key)) {
-                $indexProperty = $indexProperties->firstWhere('name', $property->getName());
+        foreach ($this->getIndexFields(false) as $field) {
+            $value = Arr::get($values, $field['name']);
+            if (isset($value) || !$field['optional']) {
+                switch ($field['type']) {
+                    case 'integer':
+                        $value = intval($value ?: 0);
+                        break;
 
-                if (isset($value) || !$indexProperty['optional']) {
-                    switch ($property->getType()) {
-                        case 'integer':
-                            $value = $value ?: 0;
-                            break;
+                    case 'float':
+                        $value = floatval($value ?: 0.0);
+                        break;
 
-                        case 'boolean':
-                            $value = boolval($value ?: false);
-                            break;
+                    case 'boolean':
+                        $value = boolval($value ?: false);
+                        break;
 
-                        case 'timestamp':
-                        case 'date':
-                        case 'datetime':
-                            $value = Carbon::parse($value ?: null)->unix();
-                            break;
+                    case 'timestamp':
+                    case 'date':
+                    case 'datetime':
+                        $value = Carbon::parse($value ?: null)->unix();
+                        break;
 
-                        default:
-                            $value = $value ?: '';
-                    }
+                    default:
+                        $value = $value ?: '';
                 }
-
-                $attributes[$key] = $value;
             }
+
+            $attributes[$field['name']] = $value;
         }
 
         return $attributes;
@@ -146,9 +148,9 @@ class SearchModel extends EloquentModel
     /**
      * @return array
      */
-    protected function getIndexFields(): array
+    protected function getIndexFields(bool $transformType = true): array
     {
-        return array_map(function (Property $property) {
+        return array_map(function (Property $property) use ($transformType) {
             $optional = $property->optional ?? false;
             $searchable = $property->searchable ?? false;
             $isDefaultSort = $property->defaultSort ?? false;
@@ -162,36 +164,35 @@ class SearchModel extends EloquentModel
             }
 
             return [
-                'name' => $property->getName(),
-                'type' => $this->transformType($property),
+                'name' => ($property->hasMeta('prefix') ? $property->prefix . '.' : '') . $property->getName(),
+                'type' => $transformType ? $this->transformType($property) : $property->getType(),
                 'facet' => $property->facet ?? false,
                 'optional' => $optional,
                 'index' => $searchable,
             ];
-        }, $this->getIndexSchema());
+        }, $this->getIndexProperties($this->schema));
     }
 
     /**
      * @return array
      */
-    protected function getIndexSchema(): array
+    protected function getIndexProperties(Schema $schema): array
     {
-        return array_values(array_filter($this->schema->getProperties(), fn (Property $property) => $property->indexed || $property->searchable));
-    }
+        $properties = [];
 
-    /**
-     * @param string $key
-     * @return Property|null
-     */
-    protected function getIndexProperty(string $key): ?Property
-    {
-        $property = $this->schema->getProperty($key);
+        foreach ($schema->getProperties() as $property) {
+            if ($property->getAccepts()) {
+                $nested = array_map(fn (Property $nestedProperty) => $nestedProperty->meta('prefix', $property->getName() . ($property->hasMeta('prefix') ? '.' . $property->prefix : '')), $this->getIndexProperties($property->getAccepts()));
+                $properties = array_merge($properties, $nested);
+                continue;
+            }
 
-        if (!$property || (!$property->indexed && !$property->searchable)) {
-            return null;
+            if ($property->indexed || $property->searchable) {
+                $properties[] = $property;
+            }
         }
 
-        return $property;
+        return $properties;
     }
 
     /**
@@ -229,13 +230,16 @@ class SearchModel extends EloquentModel
         }
 
         switch ($property->getType()) {
+            case 'integer':
+                return 'int32';
+
             case 'richtext':
                 return 'string';
 
             case 'timestamp':
             case 'date':
             case 'datetime':
-                return 'int32';
+                return 'int64';
 
             case 'boolean':
                 return 'bool';
