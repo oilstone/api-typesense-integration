@@ -1,6 +1,6 @@
 <?php
 
-namespace Typesense\LaravelTypesense\Classes;
+namespace Oilstone\ApiTypesenseIntegration\Classes;
 
 /**
  * Class TypesenseDocumentIndexResponse.

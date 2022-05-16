@@ -1,13 +1,13 @@
 {
-  "name": "typesense/laravel-scout-typesense-driver",
-  "description": "Laravel Scout Driver for Typesense",
+  "name": "oilstone/api-typesense-integration",
+  "description": "Integration service classes to connect garethhudson07/api resources with a Typesense index",
   "keywords": [
     "laravel",
     "typesense",
     "search"
   ],
   "type": "library",
-  "homepage": "https://typesense.org",
+  "homepage": "https://github.com/oilstone/api-typesense-integration",
   "license": "MIT",
   "authors": [
     {
@@ -20,21 +20,26 @@
       "name": "hi019",
       "homepage": "https://github.com/hi019",
       "role": "Developer"
+    },
+    {
+      "name": "Brendan Bullen",
+      "homepage": "https://www.onlinesolutionsltd.com",
+      "role": "Developer"
     }
   ],
   "minimum-stability": "stable",
   "autoload": {
     "psr-4": {
-      "Typesense\\LaravelTypesense\\": "src/"
+      "Oilstone\\ApiTypesenseIntegration\\": "src/"
     }
   },
   "extra": {
     "laravel": {
       "providers": [
-        "Typesense\\LaravelTypesense\\TypesenseServiceProvider"
+        "Oilstone\\ApiTypesenseIntegration\\TypesenseServiceProvider"
       ],
       "aliases": {
-        "Typesense": "Typesense\\LaravelTypesense\\TypesenseFacade"
+        "Typesense": "Oilstone\\ApiTypesenseIntegration\\TypesenseFacade"
       }
     }
   },
@@ -53,12 +58,5 @@
     "platform": {
       "php": "8.0"
     }
-  },
-  "suggest": {
-    "typesense/typesense-php": "Required to use the Typesense php client."
-  },
-  "require-dev": {
-    "phpunit/phpunit": "^8.0|^9.0",
-    "mockery/mockery": "^1.3"
   }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Typesense\LaravelTypesense\Mixin;
+namespace Oilstone\ApiTypesenseIntegration\Mixin;
 
 use Closure;
 

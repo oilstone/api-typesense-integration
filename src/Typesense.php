@@ -1,9 +1,9 @@
 <?php
 
-namespace Typesense\LaravelTypesense;
+namespace Oilstone\ApiTypesenseIntegration;
 
 use Typesense\Exceptions\TypesenseClientError;
-use Typesense\LaravelTypesense\Classes\TypesenseDocumentIndexResponse;
+use Oilstone\ApiTypesenseIntegration\Classes\TypesenseDocumentIndexResponse;
 use Typesense\Client;
 use Typesense\Collection;
 use Typesense\Document;
@@ -12,7 +12,7 @@ use Typesense\Exceptions\ObjectNotFound;
 /**
  * Class Typesense
  *
- * @package Typesense\LaravelTypesense
+ * @package Oilstone\ApiTypesenseIntegration
  * @date    4/5/20
  *
  * @author  Abdullah Al-Faqeir <abdullah@devloops.net>
@@ -87,7 +87,7 @@ class Typesense
      * @throws \Typesense\Exceptions\TypesenseClientError
      * @throws \Http\Client\Exception
      *
-     * @return \Typesense\LaravelTypesense\Classes\TypesenseDocumentIndexResponse
+     * @return \Oilstone\ApiTypesenseIntegration\Classes\TypesenseDocumentIndexResponse
      */
     public function upsertDocument(Collection $collectionIndex, $array): TypesenseDocumentIndexResponse
     {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Typesense\LaravelTypesense;
+namespace Oilstone\ApiTypesenseIntegration;
 
 use Illuminate\Support\Facades\Facade;
 

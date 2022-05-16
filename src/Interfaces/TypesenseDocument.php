@@ -1,11 +1,11 @@
 <?php
 
-namespace Typesense\LaravelTypesense\Interfaces;
+namespace Oilstone\ApiTypesenseIntegration\Interfaces;
 
 /**
  * Interface TypesenseSearch
  *
- * @package Typesense\LaravelTypesense\Interfaces
+ * @package Oilstone\ApiTypesenseIntegration\Interfaces
  */
 interface TypesenseDocument
 {

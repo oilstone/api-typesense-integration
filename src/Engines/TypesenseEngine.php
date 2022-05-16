@@ -1,8 +1,8 @@
 <?php
 
-namespace Typesense\LaravelTypesense\Engines;
+namespace Oilstone\ApiTypesenseIntegration\Engines;
 
-use Typesense\LaravelTypesense\Typesense;
+use Oilstone\ApiTypesenseIntegration\Typesense;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

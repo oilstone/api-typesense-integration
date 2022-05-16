@@ -1,9 +1,9 @@
 <?php
 
-namespace Typesense\LaravelTypesense;
+namespace Oilstone\ApiTypesenseIntegration;
 
-use Typesense\LaravelTypesense\Engines\TypesenseEngine;
-use Typesense\LaravelTypesense\Mixin\BuilderMixin;
+use Oilstone\ApiTypesenseIntegration\Engines\TypesenseEngine;
+use Oilstone\ApiTypesenseIntegration\Mixin\BuilderMixin;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Scout\Builder;
