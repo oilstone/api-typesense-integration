@@ -62,10 +62,13 @@ class SearchModel extends EloquentModel
     public function toSearchableArray()
     {
         $attributes = [];
+        $indexProperties = collect($this->getIndexFields());
 
         foreach ($this->getAttributes() as $key => $value) {
             if ($property = $this->getIndexProperty($key)) {
-                if (isset($value) || !($property->optional ?? false)) {
+                $indexProperty = $indexProperties->firstWhere('name', $property->getName());
+
+                if (isset($value) || !$indexProperty['optional']) {
                     switch ($property->getType()) {
                         case 'integer':
                             $value = $value ?: 0;
@@ -221,6 +224,10 @@ class SearchModel extends EloquentModel
      */
     protected function transformType(Property $property): string
     {
+        if ($property->hasMeta('searchType')) {
+            return $property->searchType;
+        }
+
         switch ($property->getType()) {
             case 'richtext':
                 return 'string';
@@ -229,6 +236,9 @@ class SearchModel extends EloquentModel
             case 'date':
             case 'datetime':
                 return 'int32';
+
+            case 'boolean':
+                return 'bool';
         }
 
         return $property->getType();
@@ -247,7 +257,7 @@ class SearchModel extends EloquentModel
             'model' => static::make($type, [], $schema),
             'query' => $query,
             'callback' => $callback,
-            'softDelete'=> static::usesSoftDelete() && Config::get('scout.soft_delete', false),
+            'softDelete' => static::usesSoftDelete() && Config::get('scout.soft_delete', false),
         ]);
     }
 }
