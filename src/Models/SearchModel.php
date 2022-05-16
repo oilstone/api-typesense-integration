@@ -6,6 +6,7 @@ use Api\Schema\Property;
 use Api\Schema\Schema;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
+use Laravel\Scout\Builder;
 use Laravel\Scout\Searchable;
 
 class SearchModel extends EloquentModel
@@ -229,5 +230,22 @@ class SearchModel extends EloquentModel
         }
 
         return $property->getType();
+    }
+
+    /**
+     * Perform a search against the model's indexed data.
+     *
+     * @param  string  $query
+     * @param  \Closure  $callback
+     * @return \Laravel\Scout\Builder
+     */
+    public static function search(string $type, Schema $schema = null, $query = '', $callback = null)
+    {
+        return app(Builder::class, [
+            'model' => static::make($type, [], $schema),
+            'query' => $query,
+            'callback' => $callback,
+            'softDelete'=> static::usesSoftDelete() && config('scout.soft_delete', false),
+        ]);
     }
 }

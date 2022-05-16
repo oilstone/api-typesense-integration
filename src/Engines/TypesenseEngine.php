@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Laravel\Scout\Builder;
 use Laravel\Scout\Engines\Engine;
 use Illuminate\Support\Facades\Config;
+use Oilstone\ApiTypesenseIntegration\Models\SearchModel;
 
 /**
  * Class TypesenseEngine.
@@ -282,7 +283,7 @@ class TypesenseEngine extends Engine
     /**
      * @param \Laravel\Scout\Builder              $builder
      * @param mixed                               $results
-     * @param \Illuminate\Database\Eloquent\Model $model
+     * @param SearchModel                         $model
      *
      * @return \Illuminate\Database\Eloquent\Collection
      */
@@ -292,21 +293,12 @@ class TypesenseEngine extends Engine
             return $model->newCollection();
         }
 
-        $objectIds = collect($results['hits'])
-          ->pluck('document.id')
-          ->values()
-          ->all();
-
-        $objectIdPositions = array_flip($objectIds);
-
-        return $model->getScoutModelsByIds($builder, $objectIds)
-                     ->filter(static function ($model) use ($objectIds) {
-                         return in_array($model->getScoutKey(), $objectIds, false);
-                     })
-                     ->sortBy(static function ($model) use ($objectIdPositions) {
-                         return $objectIdPositions[$model->getScoutKey()];
-                     })
-                     ->values();
+        return $model->newCollection(
+            collect($results['hits'])
+                ->pluck('document')
+                ->map(fn (array $result) => SearchModel::make($model->getTable(), $result, $model->getSchema()))
+                ->all()
+        );
     }
 
     /**
@@ -352,22 +344,7 @@ class TypesenseEngine extends Engine
             return LazyCollection::make($model->newCollection());
         }
 
-        $objectIds = collect($results['hits'])
-          ->pluck('document.id')
-          ->values()
-          ->all();
-
-        $objectIdPositions = array_flip($objectIds);
-
-        return $model->queryScoutModelsByIds($builder, $objectIds)
-                     ->cursor()
-                     ->filter(static function ($model) use ($objectIds) {
-                         return in_array($model->getScoutKey(), $objectIds, false);
-                     })
-                     ->sortBy(static function ($model) use ($objectIdPositions) {
-                         return $objectIdPositions[$model->getScoutKey()];
-                     })
-                     ->values();
+        return LazyCollection::make($this->map($builder, $results, $model)->all());
     }
 
     /**

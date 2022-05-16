@@ -2,12 +2,15 @@
 
 namespace Oilstone\ApiTypesenseIntegration;
 
-use Oilstone\ApiTypesenseIntegration\Engines\TypesenseEngine;
-use Oilstone\ApiTypesenseIntegration\Mixin\BuilderMixin;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Scout\Builder;
 use Laravel\Scout\EngineManager;
+use Laravel\Scout\Scout;
+use Oilstone\ApiTypesenseIntegration\Engines\TypesenseEngine;
+use Oilstone\ApiTypesenseIntegration\Jobs\MakeSearchable;
+use Oilstone\ApiTypesenseIntegration\Jobs\RemoveFromSearch;
+use Oilstone\ApiTypesenseIntegration\Mixin\BuilderMixin;
 use Typesense\Client;
 
 /**
@@ -46,6 +49,9 @@ class TypesenseServiceProvider extends ServiceProvider
         });
 
         $this->app->alias(Typesense::class, 'typesense');
+
+        Scout::makeSearchableUsing(MakeSearchable::class);
+        Scout::removeFromSearchUsing(RemoveFromSearch::class);
     }
 
     /**
