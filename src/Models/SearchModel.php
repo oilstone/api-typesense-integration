@@ -6,6 +6,8 @@ use Api\Schema\Property;
 use Api\Schema\Schema;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Config;
 use Laravel\Scout\Builder;
 use Laravel\Scout\Searchable;
 
@@ -210,7 +212,7 @@ class SearchModel extends EloquentModel
      */
     public function searchableAs(): string
     {
-        return config('scout.prefix') . $this->getTable();
+        return Config::get('scout.prefix') . $this->getTable();
     }
 
     /**
@@ -241,11 +243,11 @@ class SearchModel extends EloquentModel
      */
     public static function search(string $type, Schema $schema = null, $query = '', $callback = null)
     {
-        return app(Builder::class, [
+        return App::make(Builder::class, [
             'model' => static::make($type, [], $schema),
             'query' => $query,
             'callback' => $callback,
-            'softDelete'=> static::usesSoftDelete() && config('scout.soft_delete', false),
+            'softDelete'=> static::usesSoftDelete() && Config::get('scout.soft_delete', false),
         ]);
     }
 }
