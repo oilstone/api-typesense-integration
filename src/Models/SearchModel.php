@@ -67,6 +67,7 @@ class SearchModel extends EloquentModel
 
         foreach ($this->getIndexFields(false) as $field) {
             $value = Arr::get($values, $field['name']);
+
             if (isset($value) || !$field['optional']) {
                 switch ($field['type']) {
                     case 'integer':
@@ -79,6 +80,10 @@ class SearchModel extends EloquentModel
 
                     case 'boolean':
                         $value = boolval($value ?: false);
+                        break;
+
+                    case 'string[]':
+                        $value = is_array($value) ? $value : [];
                         break;
 
                     case 'timestamp':
@@ -165,7 +170,7 @@ class SearchModel extends EloquentModel
 
             return [
                 'name' => ($property->hasMeta('prefix') ? $property->prefix . '.' : '') . $property->getName(),
-                'type' => $transformType ? $this->transformType($property) : $property->getType(),
+                'type' => $transformType ? $this->transformType($property) : ($property->searchType ?? $property->getType()),
                 'facet' => $property->facet ?? false,
                 'optional' => $optional,
                 'index' => $searchable,
