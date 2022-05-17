@@ -1,0 +1,192 @@
+<?php
+
+namespace Oilstone\ApiTypesenseIntegration\Api\Bridge;
+
+use Oilstone\RsqlParser\Expression;
+use Aggregate\Set;
+use Oilstone\ApiTypesenseIntegration\Query as BaseQuery;
+use Api\Queries\Relations as RequestRelations;
+use Oilstone\ApiTypesenseIntegration\Api\Record;
+
+class Query
+{
+    /**
+     * @var BaseQuery
+     */
+    protected BaseQuery $baseQuery;
+
+    protected const OPERATOR_MAP = [
+        'IS NULL' => '=',
+        'IS NOT NULL' => '!='
+    ];
+
+    protected const VALUE_MAP = [
+        'IS NULL' => null,
+        'IS NOT NULL' => null
+    ];
+
+    /**
+     * Query constructor.
+     * @param BaseQuery $baseQuery
+     */
+    public function __construct(BaseQuery $baseQuery)
+    {
+        $this->baseQuery = $baseQuery;
+    }
+
+    /**
+     * @return BaseQuery
+     */
+    public function getBaseQuery(): BaseQuery
+    {
+        return $this->baseQuery;
+    }
+
+    /**
+     * @return Set
+     */
+    public function get(): Set
+    {
+        return $this->baseQuery->get();
+    }
+
+    /**
+     * @return null|Record
+     */
+    public function first(): ?Record
+    {
+        return $this->baseQuery->first();
+    }
+
+    /**
+     * @param RequestRelations $relations
+     * @return self
+     */
+    public function include(RequestRelations $relations): self
+    {
+        foreach ($relations->collapse() as $relation) {
+            $this->baseQuery->with($relation->path());
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param array $fields
+     * @return self
+     */
+    public function select(array $fields): self
+    {
+        if ($fields) {
+            $this->baseQuery->select(...$fields);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param Expression $expression
+     * @return self
+     */
+    public function where(Expression $expression): self
+    {
+        return $this->applyRsqlExpression($this->baseQuery, $expression);
+    }
+
+    /**
+     * @param array $orders
+     * @return self
+     */
+    public function orderBy(array $orders): self
+    {
+        foreach ($orders as $order) {
+            $this->baseQuery->orderBy($order->getProperty(), $order->getDirection());
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param $limit
+     * @return self
+     */
+    public function limit($limit): self
+    {
+        if ($limit) {
+            $this->baseQuery->limit($limit);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param $offset
+     * @return self
+     */
+    public function offset($offset): self
+    {
+        if ($offset) {
+            $this->baseQuery->offset($offset);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param $query
+     * @param Expression $expression
+     * @return self
+     */
+    protected function applyRsqlExpression($query, Expression $expression): self
+    {
+        foreach ($expression as $item) {
+            $method = $item['operator'] === 'OR' ? 'orWhere' : 'where';
+            $constraint = $item['constraint'];
+
+            if ($constraint instanceof Expression) {
+                $query->{$method}(function ($query) use ($constraint)
+                {
+                    $this->applyRsqlExpression($query, $constraint);
+                });
+            } else {
+                $operator = $constraint->getOperator()->toSql();
+
+                $query->{$method}(
+                    $constraint->getColumn(),
+                    $this->resolveConstraintOperator($operator),
+                    $this->resolveConstraintValue($operator, $constraint->getValue())
+                );
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param $operator
+     * @return mixed
+     * @noinspection PhpMissingReturnTypeInspection
+     */
+    protected function resolveConstraintOperator($operator)
+    {
+        if (array_key_exists($operator, $this::OPERATOR_MAP)) {
+            $operator = $this::OPERATOR_MAP[$operator];
+        }
+
+        return $operator;
+    }
+
+    /**
+     * @param $operator
+     * @param $value
+     * @return mixed
+     */
+    protected function resolveConstraintValue($operator, $value)
+    {
+        if (array_key_exists($operator, $this::VALUE_MAP)) {
+            $value = $this::VALUE_MAP[$operator];
+        }
+
+        return $value;
+    }
+}
