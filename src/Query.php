@@ -3,6 +3,8 @@
 namespace Oilstone\ApiTypesenseIntegration;
 
 use Aggregate\Set;
+use Api\Exceptions\InvalidQueryArgumentsException;
+use Api\Exceptions\UnknownOperatorException;
 use Api\Schema\Schema;
 use Laravel\Scout\Builder;
 use Oilstone\ApiTypesenseIntegration\Api\Record;
@@ -42,23 +44,27 @@ class Query
     }
 
     /**
+     * Not currently supported
+     *
      * @param string $relation
      * @return static
      */
     public function with(string $relation): static
     {
-        $this->queryBuilder->with($relation);
+        // $this->queryBuilder->with($relation);
 
         return $this;
     }
 
     /**
+     * Not currently supported
+     *
      * @param array|string $columns
      * @return static
      */
     public function select(array|string $columns): static
     {
-        $this->queryBuilder->select(...(is_array($columns) ? $columns : explode(',', $columns)));
+        // $this->queryBuilder->select(...(is_array($columns) ? $columns : explode(',', $columns)));
 
         return $this;
     }
@@ -81,7 +87,50 @@ class Query
      */
     public function where(...$arguments): static
     {
-        $this->queryBuilder->where(...$arguments);
+        if (count($arguments) < 2 || count($arguments) > 3) {
+            throw new InvalidQueryArgumentsException();
+        }
+
+        $field = $arguments[0];
+        $value = $arguments[2] ?? $arguments[1];
+        $operator = '=';
+
+        if (count($arguments) === 3) {
+            $operator = mb_strtolower($arguments[1]);
+        }
+
+        switch ($operator) {
+            case '=':
+            case 'has':
+            case 'contains':
+                $this->queryBuilder->where($field, $value);
+                break;
+
+            case 'in':
+                $this->queryBuilder->whereIn($field, $value);
+                break;
+
+            // Not currently supported
+
+            // case '!=':
+            // case 'has not':
+            //     $this->queryBuilder->whereNot($field, $value);
+            //     break;
+
+            // case 'not in':
+            //     $this->queryBuilder->whereNotIn($field, $value);
+            //     break;
+
+            // case '>':
+            // case '>=':
+            // case '<':
+            // case '<=':
+            //     $this->queryBuilder->where($field, $operator, $value);
+            //     break;
+
+            default:
+                throw new UnknownOperatorException($operator);
+        }
 
         return $this;
     }
@@ -98,12 +147,14 @@ class Query
     }
 
     /**
+     * Not currently supported
+     *
      * @param [mixed] $arguments
      * @return static
      */
     public function offset(int $offset): static
     {
-        $this->queryBuilder->skip($offset);
+        // $this->queryBuilder->skip($offset);
 
         return $this;
     }
@@ -114,7 +165,7 @@ class Query
      */
     public function search(string $search): static
     {
-        $this->queryBuilder->skip($search);
+        $this->queryBuilder->setQuery($search);
 
         return $this;
     }

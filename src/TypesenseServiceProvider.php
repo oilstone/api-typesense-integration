@@ -11,6 +11,8 @@ use Oilstone\ApiTypesenseIntegration\Engines\TypesenseEngine;
 use Oilstone\ApiTypesenseIntegration\Jobs\MakeSearchable;
 use Oilstone\ApiTypesenseIntegration\Jobs\RemoveFromSearch;
 use Oilstone\ApiTypesenseIntegration\Mixin\BuilderMixin;
+use Oilstone\RsqlParser\Operators;
+use Oilstone\RsqlParser\Operators\Operator;
 use Typesense\Client;
 
 /**
@@ -52,13 +54,23 @@ class TypesenseServiceProvider extends ServiceProvider
 
         Scout::makeSearchableUsing(MakeSearchable::class);
         Scout::removeFromSearchUsing(RemoveFromSearch::class);
+
+        Operators::custom(new class extends Operator {
+            protected $uri = '=has=';
+            protected $sql = 'has';
+        });
+
+        Operators::custom(new class extends Operator {
+            protected $uri = '=contains=';
+            protected $sql = 'contains';
+        });
     }
 
     /**
      * @throws \ReflectionException
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    private function registerMacros(): void
+    protected function registerMacros(): void
     {
         Builder::mixin($this->app->make(BuilderMixin::class));
     }

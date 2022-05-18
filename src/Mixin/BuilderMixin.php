@@ -18,6 +18,18 @@ class BuilderMixin
     /**
      * @return \Closure
      */
+    public function setQuery(): Closure
+    {
+        return function ($query) {
+            $this->query = $query;
+
+            return $this;
+        };
+    }
+
+    /**
+     * @return \Closure
+     */
     public function count(): Closure
     {
         return function () {

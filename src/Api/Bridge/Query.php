@@ -133,6 +133,19 @@ class Query
     }
 
     /**
+     * @param $search
+     * @return self
+     */
+    public function search($search): self
+    {
+        if ($search) {
+            $this->baseQuery->search($search);
+        }
+
+        return $this;
+    }
+
+    /**
      * @param $query
      * @param Expression $expression
      * @return self
