@@ -86,8 +86,11 @@ class SearchModel extends EloquentModel
                         $value = is_array($value) ? $value : [];
                         break;
 
-                    case 'timestamp':
                     case 'date':
+                        $value = Carbon::parse($value ?: null)->setTime(0, 0, 0)->unix();
+                        break;
+
+                    case 'timestamp':
                     case 'datetime':
                         $value = Carbon::parse($value ?: null)->unix();
                         break;
