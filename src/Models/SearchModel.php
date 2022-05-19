@@ -124,7 +124,7 @@ class SearchModel extends EloquentModel
      */
     public function typesenseQueryBy(): array
     {
-        return array_column(array_filter($this->getIndexFields(), fn (array $field) => $field['index']), 'name');
+        return array_column(array_filter($this->getIndexFields(), fn (array $field) => $field['index'] && $field['type'] === 'string'), 'name');
     }
 
     /**

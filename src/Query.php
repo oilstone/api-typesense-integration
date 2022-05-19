@@ -6,6 +6,7 @@ use Aggregate\Set;
 use Api\Exceptions\InvalidQueryArgumentsException;
 use Api\Exceptions\UnknownOperatorException;
 use Api\Schema\Schema;
+use Carbon\Carbon;
 use Laravel\Scout\Builder;
 use Oilstone\ApiTypesenseIntegration\Api\Record;
 use Oilstone\ApiTypesenseIntegration\Api\ResultSet;
@@ -24,12 +25,18 @@ class Query
     protected Builder $queryBuilder;
 
     /**
+     * @var Schema|null
+     */
+    protected Schema $schema;
+
+    /**
      * @param string|null $contentType
      * @param Delivery $client
      */
     public function __construct(string|null $contentType, ?Schema $schema = null, string $search = '*')
     {
         $this->contentType = $contentType;
+        $this->schema = $schema;
         $this->queryBuilder = SearchModel::search($contentType, $schema, $search);
     }
 
@@ -99,6 +106,20 @@ class Query
             $operator = mb_strtolower($arguments[1]);
         }
 
+        if ($this->schema) {
+            switch ($this->schema->getProperty($field)?->getType()) {
+                case 'date':
+                case 'datetime':
+                case 'timestamp':
+                    $value = Carbon::parse($value)->unix();
+                    break;
+
+                case 'boolean':
+                    $value = boolval($value ?: false) ? 'true' : 'false';
+                    break;
+            }
+        }
+
         switch ($operator) {
             case '=':
             case 'has':
@@ -110,23 +131,23 @@ class Query
                 $this->queryBuilder->whereIn($field, $value);
                 break;
 
-            // Not currently supported
+                // Not currently supported
 
-            // case '!=':
-            // case 'has not':
-            //     $this->queryBuilder->whereNot($field, $value);
-            //     break;
+                // case '!=':
+                // case 'has not':
+                //     $this->queryBuilder->whereNot($field, $value);
+                //     break;
 
-            // case 'not in':
-            //     $this->queryBuilder->whereNotIn($field, $value);
-            //     break;
+                // case 'not in':
+                //     $this->queryBuilder->whereNotIn($field, $value);
+                //     break;
 
-            // case '>':
-            // case '>=':
-            // case '<':
-            // case '<=':
-            //     $this->queryBuilder->where($field, $operator, $value);
-            //     break;
+                // case '>':
+                // case '>=':
+                // case '<':
+                // case '<=':
+                //     $this->queryBuilder->where($field, $operator, $value);
+                //     break;
 
             default:
                 throw new UnknownOperatorException($operator);
