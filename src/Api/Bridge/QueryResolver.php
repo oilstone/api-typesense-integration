@@ -72,7 +72,7 @@ class QueryResolver
      */
     public function resolve(QueryBuilder $queryBuilder, ServerRequestInterface $request): Query
     {
-        $parsedQuery = $request->getAttribute('query');
+        $parsedQuery = $request->getAttribute('parsedQuery');
 
         return (new Query($queryBuilder))->include($parsedQuery->relations())
             ->select($parsedQuery->fields())
