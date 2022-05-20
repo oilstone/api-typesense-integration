@@ -131,22 +131,21 @@ class Query
                 $this->queryBuilder->whereIn($field, $value);
                 break;
 
+            case '!=':
+            case 'has not':
+                $this->queryBuilder->where($field, ['!=', $value]);
+                break;
+
+            case '>':
+            case '>=':
+            case '<':
+            case '<=':
+                $this->queryBuilder->where($field, [$operator, $value]);
+                break;
+
                 // Not currently supported
-
-                // case '!=':
-                // case 'has not':
-                //     $this->queryBuilder->whereNot($field, $value);
-                //     break;
-
                 // case 'not in':
                 //     $this->queryBuilder->whereNotIn($field, $value);
-                //     break;
-
-                // case '>':
-                // case '>=':
-                // case '<':
-                // case '<=':
-                //     $this->queryBuilder->where($field, $operator, $value);
                 //     break;
 
             default:

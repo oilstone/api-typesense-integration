@@ -86,7 +86,7 @@ class TypesenseEngine extends Engine
         }
 
         $this->typesense->importDocuments($collection, $models->map(fn ($m) => $m->toSearchableArray())
-                                                              ->toArray());
+            ->toArray());
     }
 
     /**
@@ -191,9 +191,9 @@ class TypesenseEngine extends Engine
     private function parseOrderByLocation(string $column, float $lat, float $lng, string $direction = 'asc'): string
     {
         $direction = Str::lower($direction) === 'asc' ? 'asc' : 'desc';
-        $str = $column.'('.$lat.', '.$lng.')';
+        $str = $column . '(' . $lat . ', ' . $lng . ')';
 
-        return $str.':'.$direction;
+        return $str . ':' . $direction;
     }
 
     /**
@@ -207,7 +207,7 @@ class TypesenseEngine extends Engine
     {
         $sortByArr = [];
         foreach ($orders as $order) {
-            $sortByArr[] = $order['column'].':'.$order['direction'];
+            $sortByArr[] = $order['column'] . ':' . $order['direction'];
         }
 
         return implode(',', $sortByArr);
@@ -225,7 +225,7 @@ class TypesenseEngine extends Engine
     protected function performSearch(Builder $builder, array $options = []): mixed
     {
         $documents = $this->typesense->getCollectionIndex($builder->model)
-                                     ->getDocuments();
+            ->getDocuments();
         if ($builder->callback) {
             return call_user_func($builder->callback, $documents, $builder->query, $options);
         }
@@ -242,13 +242,19 @@ class TypesenseEngine extends Engine
      */
     protected function filters(Builder $builder): string
     {
-        return collect($builder->wheres)
-          ->map([
-              $this,
-              'parseFilters',
-          ])
-          ->values()
-          ->implode(' && ');
+        $wheres = collect($builder->wheres)
+            ->map([
+                $this,
+                'parseFilters',
+            ])->values();
+
+        $whereIns = collect($builder->whereIns)
+            ->map([
+                $this,
+                'parseInFilters',
+            ])->values();
+
+        return $wheres->merge($whereIns)->implode(' && ');
     }
 
     /**
@@ -268,6 +274,19 @@ class TypesenseEngine extends Engine
         return sprintf('%s:=%s', $key, $value);
     }
 
+    /**
+     * Parse typesense filters.
+     *
+     * @param array|string $value
+     * @param string       $key
+     *
+     * @return string
+     */
+    public function parseInFilters(array $values, string $key): string
+    {
+        return sprintf('%s:%s', $key, '[`' . implode('`,`', $values) . '`]');
+    }
+
 
     /**
      * @param mixed $results
@@ -277,8 +296,8 @@ class TypesenseEngine extends Engine
     public function mapIds($results): Collection
     {
         return collect($results['hits'])
-          ->pluck('document.id')
-          ->values();
+            ->pluck('document.id')
+            ->values();
     }
 
     /**
