@@ -43,6 +43,11 @@ class SearchModel extends EloquentModel
     protected $guarded = false;
 
     /**
+     * @var string
+     */
+    public string $additionalIndexKey = 'extraIndex';
+
+    /**
      * @param string $type
      * @param array $attributes
      * @param Schema $schema
@@ -86,11 +91,8 @@ class SearchModel extends EloquentModel
                         $value = is_array($value) ? $value : [];
                         break;
 
-                    case 'date':
-                        $value = Carbon::parse($value ?: null)->setTime(0, 0, 0)->unix();
-                        break;
-
                     case 'timestamp':
+                    case 'date':
                     case 'datetime':
                         $value = Carbon::parse($value ?: null)->unix();
                         break;
@@ -127,7 +129,7 @@ class SearchModel extends EloquentModel
      */
     public function typesenseQueryBy(): array
     {
-        return array_column(array_filter($this->getIndexFields(), fn (array $field) => $field['index'] && $field['type'] === 'string'), 'name');
+        return array_column(array_filter($this->getIndexFields(), fn (array $field) => $field['index'] && $field['type'] === 'string'), 'name') + [$this->additionalIndexKey];
     }
 
     /**
@@ -158,7 +160,7 @@ class SearchModel extends EloquentModel
      */
     protected function getIndexFields(bool $transformType = true): array
     {
-        return array_map(function (Property $property) use ($transformType) {
+        return array_merge(array_map(function (Property $property) use ($transformType) {
             $optional = $property->optional ?? false;
             $searchable = $property->searchable ?? false;
             $isDefaultSort = $property->defaultSort ?? false;
@@ -178,7 +180,15 @@ class SearchModel extends EloquentModel
                 'optional' => $optional,
                 'index' => $searchable,
             ];
-        }, $this->getIndexProperties($this->schema));
+        }, $this->getIndexProperties($this->schema)), [
+            [
+                'name' => $this->additionalIndexKey,
+                'type' => 'string',
+                'facet' => false,
+                'optional' => true,
+                'index' => true,
+            ],
+        ]);
     }
 
     /**
