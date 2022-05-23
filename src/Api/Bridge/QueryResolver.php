@@ -67,7 +67,7 @@ class QueryResolver
         $offset = $parsedQuery->offset();
 
         if ($limit && $offset) {
-            $page = intval(ceil($offset / $limit));
+            $page = intval(ceil($offset / $limit)) + 1;
 
             return $this->resolve($this->baseQuery(), $request)->page($page);
         }
