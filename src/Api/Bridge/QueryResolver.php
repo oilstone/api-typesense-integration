@@ -62,6 +62,16 @@ class QueryResolver
      */
     public function collection(ServerRequestInterface $request): Set
     {
+        $parsedQuery = $request->getAttribute('parsedQuery');
+        $limit = $parsedQuery->limit();
+        $offset = $parsedQuery->offset();
+
+        if ($limit && $offset) {
+            $page = intval(ceil($offset / $limit));
+
+            return $this->resolve($this->baseQuery(), $request)->page($page);
+        }
+
         return $this->resolve($this->baseQuery(), $request)->get();
     }
 
@@ -75,11 +85,10 @@ class QueryResolver
         $parsedQuery = $request->getAttribute('parsedQuery');
 
         return (new Query($queryBuilder))->include($parsedQuery->relations())
+            ->limit($parsedQuery->limit())
             ->select($parsedQuery->fields())
             ->where($parsedQuery->filters())
             ->orderBy($parsedQuery->sort())
-            ->limit($parsedQuery->limit())
-            ->offset($parsedQuery->offset())
             ->search($parsedQuery->search());
     }
 

@@ -167,20 +167,7 @@ class Query
     }
 
     /**
-     * Not currently supported
-     *
-     * @param [mixed] $arguments
-     * @return static
-     */
-    public function offset(int $offset): static
-    {
-        // $this->queryBuilder->skip($offset);
-
-        return $this;
-    }
-
-    /**
-     * @param string $offset
+     * @param string $search
      * @return static
      */
     public function search(string $search): static
@@ -195,15 +182,15 @@ class Query
      */
     public function get(): Set
     {
-        return $this->getResultSet();
+        return ResultSet::make($this->queryBuilder->get()->toArray());
     }
 
     /**
      * @return Set
      */
-    public function getResultSet(): Set
+    public function page(int $page): Set
     {
-        return ResultSet::make($this->queryBuilder->get()->toArray());
+        return ResultSet::make(collect($this->queryBuilder->paginate($this->queryBuilder->limit, 'page', $page)->items())->toArray());
     }
 
     /**

@@ -51,6 +51,14 @@ class Query
     }
 
     /**
+     * @return Set
+     */
+    public function page(int $page): Set
+    {
+        return $this->baseQuery->page($page);
+    }
+
+    /**
      * @return null|Record
      */
     public function first(): ?Record
@@ -114,19 +122,6 @@ class Query
     {
         if ($limit) {
             $this->baseQuery->limit($limit);
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param $offset
-     * @return self
-     */
-    public function offset($offset): self
-    {
-        if ($offset) {
-            $this->baseQuery->offset($offset);
         }
 
         return $this;
