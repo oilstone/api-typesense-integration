@@ -11,6 +11,8 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class QueryResolver
 {
+    protected static int $hardLimit = 250;
+
     /**
      * @var string
      */
@@ -64,15 +66,26 @@ class QueryResolver
     {
         $parsedQuery = $request->getAttribute('parsedQuery');
         $limit = $parsedQuery->limit();
-        $offset = $parsedQuery->offset();
+        $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
+        $allRecordRetrieved = false;
+        $collection = new Set();
+        $page = $limit ? (intval(ceil(($parsedQuery->offset() ?? 0) / $limit)) + 1) : 1;
 
-        if ($limit && $offset) {
-            $page = intval(ceil($offset / $limit)) + 1;
+        do {
+            $batch = $this->resolve($this->baseQuery(), $request)->limit($requestLimit)->page($page);
 
-            return $this->resolve($this->baseQuery(), $request)->page($page);
-        }
+            if (count($batch) < $requestLimit) {
+                $allRecordRetrieved = true;
+            }
 
-        return $this->resolve($this->baseQuery(), $request)->get();
+            foreach ($batch->all() as $record) {
+                $collection->push($record);
+            }
+
+            $page++;
+        } while (!$allRecordRetrieved && (!$limit || $collection->count() < $limit));
+
+        return $collection;
     }
 
     /**
@@ -85,7 +98,6 @@ class QueryResolver
         $parsedQuery = $request->getAttribute('parsedQuery');
 
         return (new Query($queryBuilder))->include($parsedQuery->relations())
-            ->limit($parsedQuery->limit())
             ->select($parsedQuery->fields())
             ->where($parsedQuery->filters())
             ->orderBy($parsedQuery->sort())

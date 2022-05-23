@@ -83,7 +83,8 @@ class Query
      */
     public function orderBy(string $column, string $direction = 'asc'): static
     {
-        $this->queryBuilder->orderBy($column, strtolower($direction));
+        // TODO: Remove camel casing here once the API package is no longer snake casing the query parameters automatically
+        $this->queryBuilder->orderBy(\Api\Support\Str::camel($column), strtolower($direction));
 
         return $this;
     }

@@ -67,6 +67,10 @@ class SearchModel extends EloquentModel
      */
     public function toSearchableArray()
     {
+        if (!$this->schema) {
+            return [];
+        }
+
         $attributes = [];
         $values = $this->getAttributes();
 
@@ -160,6 +164,10 @@ class SearchModel extends EloquentModel
      */
     protected function getIndexFields(bool $transformType = true): array
     {
+        if (!$this->schema) {
+            return [];
+        }
+
         return array_merge(array_map(function (Property $property) use ($transformType) {
             $optional = $property->optional ?? false;
             $searchable = $property->searchable ?? false;
@@ -218,7 +226,7 @@ class SearchModel extends EloquentModel
      */
     protected function getSortingField(): ?string
     {
-        foreach ($this->schema->getProperties() as $property) {
+        foreach ($this->schema?->getProperties() ?? [] as $property) {
             if ($property->defaultSort) {
                 return $property->getName();
             }
