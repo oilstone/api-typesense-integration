@@ -53,7 +53,7 @@
     "illuminate/queue": "^7.0|^8.0|^9.0",
     "illuminate/support": "^7.0|^8.0|^9.0",
     "typesense/typesense-php": "^4.0",
-    "garethhudson07/api": "^8.0"
+    "garethhudson07/api": "^8.1"
   },
   "config": {
     "platform": {

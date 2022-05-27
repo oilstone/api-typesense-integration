@@ -2,7 +2,7 @@
 
 namespace Oilstone\ApiTypesenseIntegration\Api\Bridge;
 
-use Oilstone\RsqlParser\Expression;
+use Api\Queries\Expression;
 use Aggregate\Set;
 use Oilstone\ApiTypesenseIntegration\Query as BaseQuery;
 use Api\Queries\Relations as RequestRelations;
@@ -98,7 +98,7 @@ class Query
      */
     public function where(Expression $expression): self
     {
-        return $this->applyRsqlExpression($this->baseQuery, $expression);
+        return $this->applyExpression($this->baseQuery, $expression);
     }
 
     /**
@@ -145,7 +145,7 @@ class Query
      * @param Expression $expression
      * @return self
      */
-    protected function applyRsqlExpression($query, Expression $expression): self
+    protected function applyExpression($query, Expression $expression): self
     {
         foreach ($expression as $item) {
             $method = $item['operator'] === 'OR' ? 'orWhere' : 'where';
@@ -154,13 +154,13 @@ class Query
             if ($constraint instanceof Expression) {
                 $query->{$method}(function ($query) use ($constraint)
                 {
-                    $this->applyRsqlExpression($query, $constraint);
+                    $this->applyExpression($query, $constraint);
                 });
             } else {
                 $operator = $constraint->getOperator()->toSql();
 
                 $query->{$method}(
-                    $constraint->getColumn(),
+                    $constraint->getProperty()->getAlias(),
                     $this->resolveConstraintOperator($operator),
                     $this->resolveConstraintValue($operator, $constraint->getValue())
                 );
