@@ -108,7 +108,7 @@ class Query
         }
 
         if ($this->schema) {
-            switch ($this->schema->getProperty($field)?->getType()) {
+            switch ($field?->getType()) {
                 case 'date':
                 case 'datetime':
                 case 'timestamp':
@@ -125,28 +125,28 @@ class Query
             case '=':
             case 'has':
             case 'contains':
-                $this->queryBuilder->where($field, $value);
+                $this->queryBuilder->where($field->getName(), $value);
                 break;
 
             case 'in':
-                $this->queryBuilder->whereIn($field, $value);
+                $this->queryBuilder->whereIn($field->getName(), $value);
                 break;
 
             case '!=':
             case 'has not':
-                $this->queryBuilder->where($field, ['!=', $value]);
+                $this->queryBuilder->where($field->getName(), ['!=', $value]);
                 break;
 
             case '>':
             case '>=':
             case '<':
             case '<=':
-                $this->queryBuilder->where($field, [$operator, $value]);
+                $this->queryBuilder->where($field->getName(), [$operator, $value]);
                 break;
 
                 // Not currently supported
                 // case 'not in':
-                //     $this->queryBuilder->whereNotIn($field, $value);
+                //     $this->queryBuilder->whereNotIn($field->getName(), $value);
                 //     break;
 
             default:

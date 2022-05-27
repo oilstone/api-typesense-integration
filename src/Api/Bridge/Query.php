@@ -147,7 +147,7 @@ class Query
      */
     protected function applyExpression($query, Expression $expression): self
     {
-        foreach ($expression as $item) {
+        foreach ($expression->getItems() as $item) {
             $method = $item['operator'] === 'OR' ? 'orWhere' : 'where';
             $constraint = $item['constraint'];
 
@@ -157,10 +157,10 @@ class Query
                     $this->applyExpression($query, $constraint);
                 });
             } else {
-                $operator = $constraint->getOperator()->toSql();
+                $operator = $constraint->getOperator();
 
                 $query->{$method}(
-                    $constraint->getProperty()->getAlias(),
+                    $constraint->getProperty()->getName(),
                     $this->resolveConstraintOperator($operator),
                     $this->resolveConstraintValue($operator, $constraint->getValue())
                 );
