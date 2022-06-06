@@ -108,7 +108,7 @@ class Query
     public function orderBy(array $orders): self
     {
         foreach ($orders as $order) {
-            $this->baseQuery->orderBy($order->getProperty(), $order->getDirection());
+            $this->baseQuery->orderBy($order->getPath()->getEntity()->getName(), $order->getDirection());
         }
 
         return $this;
@@ -160,7 +160,7 @@ class Query
                 $operator = $constraint->getOperator();
 
                 $query->{$method}(
-                    $constraint->getProperty()->getName(),
+                    $constraint->getPath()->getEntity()->getName(),
                     $this->resolveConstraintOperator($operator),
                     $this->resolveConstraintValue($operator, $constraint->getValue())
                 );

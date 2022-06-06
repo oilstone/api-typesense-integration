@@ -65,7 +65,7 @@ class QueryResolver
     public function collection(ServerRequestInterface $request): Set
     {
         $parsedQuery = $request->getAttribute('parsedQuery');
-        $limit = $parsedQuery->limit();
+        $limit = $parsedQuery->getLimit();
         $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
         $allRecordRetrieved = false;
         $collection = new Set();
@@ -97,11 +97,11 @@ class QueryResolver
     {
         $parsedQuery = $request->getAttribute('parsedQuery');
 
-        return (new Query($queryBuilder))->include($parsedQuery->relations())
-            ->select($parsedQuery->fields())
-            ->where($parsedQuery->filters())
-            ->orderBy($parsedQuery->sort())
-            ->search($parsedQuery->search());
+        return (new Query($queryBuilder))->include($parsedQuery->getRelations())
+            ->select($parsedQuery->getFields())
+            ->where($parsedQuery->getFilters())
+            ->orderBy($parsedQuery->getSort())
+            ->search($parsedQuery->getSearch());
     }
 
     /**
