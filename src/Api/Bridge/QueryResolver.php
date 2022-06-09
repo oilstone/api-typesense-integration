@@ -69,7 +69,7 @@ class QueryResolver
         $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
         $allRecordRetrieved = false;
         $collection = new Set();
-        $page = $limit ? (intval(ceil(($parsedQuery->offset() ?? 0) / $limit)) + 1) : 1;
+        $page = $limit ? (intval(ceil(($parsedQuery->getOffset() ?? 0) / $limit)) + 1) : 1;
 
         do {
             $batch = $this->resolve($this->baseQuery(), $request)->limit($requestLimit)->page($page);
