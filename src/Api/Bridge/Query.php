@@ -4,7 +4,6 @@ namespace Oilstone\ApiTypesenseIntegration\Api\Bridge;
 
 use Api\Queries\Expression;
 use Aggregate\Set;
-use Api\Queries\Paths\Path;
 use Oilstone\ApiTypesenseIntegration\Query as BaseQuery;
 use Api\Queries\Relations as RequestRelations;
 use Oilstone\ApiTypesenseIntegration\Api\Record;
@@ -161,7 +160,7 @@ class Query
                 $operator = $constraint->getOperator();
 
                 $query->{$method}(
-                    $this->resolvePropertyPath($constraint->getPath()),
+                    $constraint->getPath()->getEntity()->getName(),
                     $this->resolveConstraintOperator($operator),
                     $this->resolveConstraintValue($operator, $constraint->getValue())
                 );
@@ -169,20 +168,6 @@ class Query
         }
 
         return $this;
-    }
-
-    /**
-     * @param Path $path
-     * @return string
-     */
-    protected function resolvePropertyPath(Path $path): string
-    {
-        $property = $path->getEntity();
-
-        return implode(
-            '.',
-            array_filter([$path->prefix()->implode(), $property?->alias ?? $property->getPropertyName()])
-        );
     }
 
     /**
