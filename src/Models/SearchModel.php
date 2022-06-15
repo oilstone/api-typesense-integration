@@ -84,6 +84,7 @@ class SearchModel extends EloquentModel
                         break;
 
                     case 'float':
+                    case 'decimal':
                         $value = floatval($value ?: 0.0);
                         break;
 
@@ -98,7 +99,7 @@ class SearchModel extends EloquentModel
                     case 'timestamp':
                     case 'date':
                     case 'datetime':
-                        $value = Carbon::parse($value ?: null)->unix();
+                        $value = $value ? Carbon::parse($value)->unix() : 0;
                         break;
 
                     default:
@@ -182,7 +183,7 @@ class SearchModel extends EloquentModel
             }
 
             return [
-                'name' => ($property->hasMeta('prefix') ? $property->prefix . '.' : '') . $property->getName(),
+                'name' => implode('.', array_filter([$property->prefix, $property->getName()])),
                 'type' => $transformType ? $this->transformType($property) : ($property->searchType ?? $property->getType()),
                 'facet' => $property->facet ?? false,
                 'optional' => $optional,
@@ -202,14 +203,15 @@ class SearchModel extends EloquentModel
     /**
      * @return array
      */
-    protected function getIndexProperties(Schema $schema): array
+    protected function getIndexProperties(Schema $schema, ?string $prefix = null): array
     {
         $properties = [];
 
         foreach ($schema->getProperties() as $property) {
+            $property->meta('prefix', $prefix);
+
             if ($property->getAccepts()) {
-                $nested = array_map(fn (Property $nestedProperty) => $nestedProperty->meta('prefix', $property->getName() . ($property->hasMeta('prefix') ? '.' . $property->prefix : '')), $this->getIndexProperties($property->getAccepts()));
-                $properties = array_merge($properties, $nested);
+                $properties = array_merge($properties, $this->getIndexProperties($property->getAccepts(), implode('.', array_filter([$property->prefix, $property->getName()])) ?: null));
                 continue;
             }
 
@@ -269,6 +271,9 @@ class SearchModel extends EloquentModel
 
             case 'boolean':
                 return 'bool';
+
+            case 'decimal':
+                return 'float';
         }
 
         return $property->getType();
