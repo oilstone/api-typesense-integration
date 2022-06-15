@@ -5,8 +5,10 @@ namespace Oilstone\ApiTypesenseIntegration;
 use Aggregate\Set;
 use Api\Exceptions\InvalidQueryArgumentsException;
 use Api\Exceptions\UnknownOperatorException;
+use Api\Schema\Property;
 use Api\Schema\Schema;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 use Laravel\Scout\Builder;
 use Oilstone\ApiTypesenseIntegration\Api\Record;
 use Oilstone\ApiTypesenseIntegration\Api\ResultSet;
@@ -107,12 +109,14 @@ class Query
             $operator = mb_strtolower($arguments[1]);
         }
 
-        if ($this->schema) {
-            if (is_string($field)) {
-                $field = $this->schema->getProperty($field);
-            }
+        if (
+            $this->schema &&
+            is_string($field) &&
+            $property = Arr::first($this->schema->getProperties(), fn (Property $property) => $property->getName() === $field || $property->alias === $field)
+        ) {
+            $field = $property;
 
-            switch ($field?->getType()) {
+            switch ($field->getType()) {
                 case 'date':
                 case 'datetime':
                 case 'timestamp':

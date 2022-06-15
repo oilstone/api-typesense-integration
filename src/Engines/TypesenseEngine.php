@@ -260,13 +260,14 @@ class TypesenseEngine extends Engine
     /**
      * Parse typesense filters.
      *
-     * @param array|string $value
-     * @param string       $key
+     * @param array $where
      *
      * @return string
      */
-    public function parseFilters(array|string $value, string $key): string
+    public function parseFilters(array $where): string
     {
+        list($key, $value) = $where;
+
         if (is_array($value)) {
             return sprintf('%s:%s', $key, implode('', $value));
         }
@@ -282,8 +283,10 @@ class TypesenseEngine extends Engine
      *
      * @return string
      */
-    public function parseInFilters(array $values, string $key): string
+    public function parseInFilters(array $whereIn): string
     {
+        list($key, $values) = $whereIn;
+
         return sprintf('%s:%s', $key, '[`' . implode('`,`', $values) . '`]');
     }
 

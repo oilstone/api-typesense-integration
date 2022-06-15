@@ -4,13 +4,12 @@ namespace Oilstone\ApiTypesenseIntegration;
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
-use Laravel\Scout\Builder;
+use Laravel\Scout\Builder as ScoutBuilder;
 use Laravel\Scout\EngineManager;
 use Laravel\Scout\Scout;
 use Oilstone\ApiTypesenseIntegration\Engines\TypesenseEngine;
 use Oilstone\ApiTypesenseIntegration\Jobs\MakeSearchable;
 use Oilstone\ApiTypesenseIntegration\Jobs\RemoveFromSearch;
-use Oilstone\ApiTypesenseIntegration\Mixin\BuilderMixin;
 use Oilstone\RsqlParser\Operators;
 use Oilstone\RsqlParser\Operators\Operator;
 use Typesense\Client;
@@ -25,6 +24,15 @@ use Typesense\Client;
 class TypesenseServiceProvider extends ServiceProvider
 {
     /**
+     * All of the container bindings that should be registered.
+     *
+     * @var array
+     */
+    public $bindings = [
+        ScoutBuilder::class => Builder::class,
+    ];
+
+    /**
      * @throws \ReflectionException
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
@@ -35,8 +43,6 @@ class TypesenseServiceProvider extends ServiceProvider
 
             return new TypesenseEngine(new Typesense($client));
         });
-
-        $this->registerMacros();
     }
 
     /**
@@ -64,14 +70,5 @@ class TypesenseServiceProvider extends ServiceProvider
             protected $uri = '=contains=';
             protected $sql = 'contains';
         });
-    }
-
-    /**
-     * @throws \ReflectionException
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException
-     */
-    protected function registerMacros(): void
-    {
-        Builder::mixin($this->app->make(BuilderMixin::class));
     }
 }
