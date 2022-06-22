@@ -108,7 +108,7 @@ class Query
     public function orderBy(array $orders): self
     {
         foreach ($orders as $order) {
-            $this->baseQuery->orderBy($order->getPath()->getEntity()->getName(), $order->getDirection());
+            $this->baseQuery->orderBy($order->getPath()->getEntity()?->getName() ?? $order->getPropertyName(), $order->getDirection());
         }
 
         return $this;

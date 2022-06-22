@@ -70,5 +70,11 @@ class TypesenseServiceProvider extends ServiceProvider
             protected $uri = '=contains=';
             protected $sql = 'contains';
         });
+
+        Operators::custom(new class extends Operator {
+            protected $uri = '=near=';
+            protected $sql = 'near';
+            protected $expectsArray = true;
+        });
     }
 }

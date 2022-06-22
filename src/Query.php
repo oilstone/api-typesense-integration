@@ -85,8 +85,7 @@ class Query
      */
     public function orderBy(string $column, string $direction = 'asc'): static
     {
-        // TODO: Remove camel casing here once the API package is no longer snake casing the query parameters automatically
-        $this->queryBuilder->orderBy(\Api\Support\Str::camel($column), strtolower($direction));
+        $this->queryBuilder->orderBy($column, strtolower($direction));
 
         return $this;
     }
@@ -152,6 +151,10 @@ class Query
             case '<':
             case '<=':
                 $this->queryBuilder->where($fieldName, [$operator, $value]);
+                break;
+
+            case 'near':
+                $this->queryBuilder->where($fieldName, ['', str_ireplace(['mi', 'km', ','], [' mi', ' km', ', '], preg_replace('/\s+/', '', '(' . implode(',', $value) . ')'))]);
                 break;
 
                 // Not currently supported
