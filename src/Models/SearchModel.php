@@ -74,7 +74,7 @@ class SearchModel extends EloquentModel
         $attributes = [];
         $values = $this->getAttributes();
 
-        foreach ($this->getIndexFields(false) as $field) {
+        foreach ($this->getIndexFields(false, true) as $field) {
             $value = Arr::get($values, $field['name']);
 
             if (isset($value) || !$field['optional']) {
@@ -99,6 +99,10 @@ class SearchModel extends EloquentModel
                     case 'timestamp':
                     case 'date':
                     case 'datetime':
+                        if (!$value && ($field['property'] ?? null)?->hasMeta('nullDate')) {
+                            $value = $field['property']->nullDate;
+                        }
+
                         $value = $value ? Carbon::parse($value)->unix() : 0;
                         break;
 
@@ -163,13 +167,13 @@ class SearchModel extends EloquentModel
     /**
      * @return array
      */
-    protected function getIndexFields(bool $transformType = true): array
+    protected function getIndexFields(bool $transformType = true, bool $includeProperty = false): array
     {
         if (!$this->schema) {
             return [];
         }
 
-        return array_merge(array_map(function (Property $property) use ($transformType) {
+        return array_merge(array_map(function (Property $property) use ($transformType, $includeProperty) {
             $optional = $property->optional ?? false;
             $searchable = $property->searchable ?? false;
             $isDefaultSort = $property->defaultSort ?? false;
@@ -182,13 +186,19 @@ class SearchModel extends EloquentModel
                 $optional = false;
             }
 
-            return [
+            $field = [
                 'name' => implode('.', array_filter([$property->prefix, $property->getName()])),
                 'type' => $transformType ? $this->transformType($property) : ($property->searchType ?? $property->getType()),
                 'facet' => $property->facet ?? false,
                 'optional' => $optional,
                 'index' => $searchable,
             ];
+
+            if ($includeProperty) {
+                $field['property'] = $property;
+            }
+
+            return $field;
         }, $this->getIndexProperties($this->schema)), [
             [
                 'name' => $this->additionalIndexKey,
