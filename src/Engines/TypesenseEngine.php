@@ -318,8 +318,14 @@ class TypesenseEngine extends Engine
 
         return $model->newCollection(
             collect($results['hits'])
-                ->pluck('document')
-                ->map(fn (array $result) => SearchModel::make($model->getTable(), Arr::undot($result), $model->getSchema()))
+                ->map(function (array $result) use ($model) {
+                    $metaData = [
+                        'textMatch' => $result['text_match'],
+                        'highlights' => $result['highlights'],
+                    ];
+
+                    return SearchModel::make($model->getTable(), array_merge(Arr::undot($result['document']), ['meta' => $metaData]), $model->getSchema());
+                })
                 ->all()
         );
     }
