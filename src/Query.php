@@ -29,17 +29,17 @@ class Query
     /**
      * @var Schema|null
      */
-    protected Schema $schema;
+    protected ?Schema $schema;
 
     /**
      * @param string|null $contentType
      * @param Delivery $client
      */
-    public function __construct(string|null $contentType, ?Schema $schema = null, string $search = '*')
+    public function __construct(string|null $contentType, ?Schema $schema = null, string $search = '*', array|string|null $queryBy = null)
     {
         $this->contentType = $contentType;
         $this->schema = $schema;
-        $this->queryBuilder = SearchModel::search($contentType, $schema, $search);
+        $this->queryBuilder = SearchModel::search($contentType, $schema, $search, null, is_array($queryBy) ? $queryBy : explode(',', (string) $queryBy));
     }
 
     /**
@@ -73,7 +73,7 @@ class Query
      */
     public function select(array|string $columns): static
     {
-        // $this->queryBuilder->select(...(is_array($columns) ? $columns : explode(',', $columns)));
+        $this->queryBuilder->select(...(is_array($columns) ? $columns : explode(',', $columns)));
 
         return $this;
     }

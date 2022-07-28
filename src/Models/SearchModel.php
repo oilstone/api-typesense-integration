@@ -43,6 +43,11 @@ class SearchModel extends EloquentModel
     protected $guarded = false;
 
     /**
+     * @var array
+     */
+    protected array $queryBy = [];
+
+    /**
      * @var string
      */
     public string $additionalIndexKey = 'extraIndex';
@@ -50,14 +55,15 @@ class SearchModel extends EloquentModel
     /**
      * @param string $type
      * @param array $attributes
-     * @param Schema $schema
+     * @param Schema|null $schema
      * @return static
      */
-    public static function make(string $type, array $attributes = [], Schema $schema = null): static
+    public static function make(string $type, array $attributes = [], ?Schema $schema = null, array $queryBy = []): static
     {
         return (new static($attributes))
             ->setSchema($schema)
-            ->setTable($type);
+            ->setTable($type)
+            ->setQueryBy($queryBy);
     }
 
     /**
@@ -138,7 +144,7 @@ class SearchModel extends EloquentModel
      */
     public function typesenseQueryBy(): array
     {
-        return array_column(array_filter($this->getIndexFields(), fn (array $field) => $field['index'] && $field['type'] === 'string'), 'name') + [$this->additionalIndexKey];
+        return $this->queryBy ?: array_column(array_filter($this->getIndexFields(), fn (array $field) => $field['index'] && $field['type'] === 'string'), 'name') + [$this->additionalIndexKey];
     }
 
     /**
@@ -154,12 +160,31 @@ class SearchModel extends EloquentModel
     /**
      * Set the value of schema
      *
-     * @param Schema  $schema
+     * @param Schema|null  $schema
      * @return static
      */
     public function setSchema(?Schema $schema): static
     {
         $this->schema = $schema;
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getQueryBy(): array
+    {
+        return $this->queryBy;
+    }
+
+    /**
+     * @param array $queryBy
+     * @return static
+     */
+    public function setQueryBy(array $queryBy): static
+    {
+        $this->queryBy = $queryBy;
 
         return $this;
     }
@@ -292,14 +317,16 @@ class SearchModel extends EloquentModel
     /**
      * Perform a search against the model's indexed data.
      *
-     * @param  string  $query
-     * @param  \Closure  $callback
-     * @return \Laravel\Scout\Builder
+     * @param string $type
+     * @param Schema|null $schema
+     * @param mixed $query
+     * @param mixed $callback
+     * @return Builder
      */
-    public static function search(string $type, Schema $schema = null, $query = '', $callback = null)
+    public static function search(string $type, ?Schema $schema = null, mixed $query = '', mixed $callback = null, array $queryBy = []): Builder
     {
         return App::make(Builder::class, [
-            'model' => static::make($type, [], $schema),
+            'model' => static::make($type, [], $schema, $queryBy),
             'query' => $query,
             'callback' => $callback,
             'softDelete' => static::usesSoftDelete() && Config::get('scout.soft_delete', false),
