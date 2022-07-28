@@ -73,7 +73,7 @@ class Query
      */
     public function select(array|string $columns): static
     {
-        $this->queryBuilder->select(...(is_array($columns) ? $columns : explode(',', $columns)));
+        // $this->queryBuilder->select(...(is_array($columns) ? $columns : explode(',', $columns)));
 
         return $this;
     }
