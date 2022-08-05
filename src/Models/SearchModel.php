@@ -142,9 +142,25 @@ class SearchModel extends EloquentModel
      *
      * @return array
      */
-    public function typesenseQueryBy(): array
+    public function typesenseQueryBy(bool $returnWeights = false): array
     {
-        return array_filter($this->queryBy) ?: array_column(array_filter($this->getIndexFields(), fn (array $field) => $field['index'] && $field['type'] === 'string'), 'name') + [$this->additionalIndexKey];
+        $this->queryBy = array_values(array_filter($this->queryBy));
+
+        if ($this->queryBy) {
+            if ($returnWeights) {
+                return array_map(fn () => 1, $this->queryBy);
+            }
+
+            return $this->queryBy;
+        }
+
+        $columns = array_map(fn (array $column) => array_merge(['priority' => 1], $column), array_filter($this->getIndexFields(true, false, true), fn (array $field) => $field['index'] && $field['type'] === 'string'));
+
+        usort($columns, function ($column1, $column2) {
+            return $column2['priority'] <=> $column1['priority'];
+        });
+
+        return array_column($columns, $returnWeights ? 'priority' : 'name');
     }
 
     /**
@@ -192,13 +208,13 @@ class SearchModel extends EloquentModel
     /**
      * @return array
      */
-    protected function getIndexFields(bool $transformType = true, bool $includeProperty = false): array
+    protected function getIndexFields(bool $transformType = true, bool $includeProperty = false, bool $includePriority = false): array
     {
         if (!$this->schema) {
             return [];
         }
 
-        return array_merge(array_map(function (Property $property) use ($transformType, $includeProperty) {
+        return array_merge(array_map(function (Property $property) use ($transformType, $includeProperty, $includePriority) {
             $optional = $property->optional ?? false;
             $searchable = $property->searchable ?? false;
             $isDefaultSort = $property->defaultSort ?? false;
@@ -221,6 +237,10 @@ class SearchModel extends EloquentModel
 
             if ($includeProperty) {
                 $field['property'] = $property;
+            }
+
+            if ($includePriority) {
+                $field['priority'] = $property->searchPriority ?? 1;
             }
 
             return $field;

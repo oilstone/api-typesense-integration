@@ -145,6 +145,7 @@ class TypesenseEngine extends Engine
         $params = [
             'q'                   => $builder->query,
             'query_by'            => implode(',', $builder->model->typesenseQueryBy()),
+            'query_by_weights'    => implode(',', $builder->model->typesenseQueryBy(true)),
             'filter_by'           => $this->filters($builder),
             'per_page'            => $perPage,
             'page'                => $page,
