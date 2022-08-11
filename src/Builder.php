@@ -2,6 +2,8 @@
 
 namespace Oilstone\ApiTypesenseIntegration;
 
+use Illuminate\Container\Container;
+use Illuminate\Pagination\Paginator as IlluminatePaginator;
 use Laravel\Scout\Builder as ScoutBuilder;
 
 class Builder extends ScoutBuilder
@@ -174,5 +176,56 @@ class Builder extends ScoutBuilder
         return tap($this->withTrashed(), function () {
             $this->wheres[] = ['__soft_deleted', 1];
         });
+    }
+
+    /**
+     * Paginate the given query into a paginator.
+     *
+     * @param  int  $perPage
+     * @param  string  $pageName
+     * @param  int|null  $page
+     * @return Paginator
+     */
+    public function paginate($perPage = null, $pageName = 'page', $page = null): Paginator
+    {
+        $engine = $this->engine();
+
+        $page = $page ?: IlluminatePaginator::resolveCurrentPage($pageName);
+
+        $perPage = $perPage ?: $this->model->getPerPage();
+
+        $results = $this->model->newCollection($engine->map(
+            $this, $rawResults = $engine->paginate($this, $perPage, $page), $this->model
+        )->all());
+
+        return Container::getInstance()->makeWith(Paginator::class, [
+            'items' => $results,
+            'total' => $this->getTotalCount($rawResults),
+            'outOf' => $this->getOutOfCount($rawResults),
+            'perPage' => $perPage,
+            'currentPage' => $page,
+        ])->appends('query', $this->query);
+    }
+
+    /**
+     * Get the total number of results from the Scout engine
+     *
+     * @param  mixed  $results
+     * @return int
+     */
+    protected function getTotalCount($results)
+    {
+        return $this->engine()->getTotalCount($results);
+    }
+
+    /**
+     * Get the total number of unfiltered results from the Scout engine
+     *
+     * @param  mixed  $results
+     * @return int
+     */
+    protected function getOutOfCount($results)
+    {
+        return $this->engine()->getOutOfCount($results);
     }
 }

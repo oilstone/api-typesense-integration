@@ -332,11 +332,25 @@ class TypesenseEngine extends Engine
     }
 
     /**
-     * @inheritDoc
+     * Get the total count from a raw result returned by the engine.
+     *
+     * @param  mixed  $results
+     * @return int
      */
     public function getTotalCount($results): int
     {
         return (int) ($results['found'] ?? 0);
+    }
+
+    /**
+     * Get the total unfiltered count from a raw result returned by the engine.
+     *
+     * @param  mixed  $results
+     * @return int
+     */
+    public function getOutOfCount($results): int
+    {
+        return (int) ($results['out_of'] ?? 0);
     }
 
     /**

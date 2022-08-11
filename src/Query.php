@@ -9,7 +9,6 @@ use Api\Schema\Property;
 use Api\Schema\Schema;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
-use Laravel\Scout\Builder;
 use Oilstone\ApiTypesenseIntegration\Api\Record;
 use Oilstone\ApiTypesenseIntegration\Api\ResultSet;
 use Oilstone\ApiTypesenseIntegration\Models\SearchModel;
@@ -204,7 +203,13 @@ class Query
      */
     public function page(int $page): Set
     {
-        return ResultSet::make(collect($this->queryBuilder->paginate($this->queryBuilder->limit, 'page', $page)->items())->toArray());
+        $results = $this->queryBuilder->paginate($this->queryBuilder->limit, 'page', $page)->toArray();
+
+        return ResultSet::make($results['data'], [
+            'outOf' => $results['out_of'],
+            'perPage' => $results['per_page'],
+            'total' => $results['total'],
+        ]);
     }
 
     /**

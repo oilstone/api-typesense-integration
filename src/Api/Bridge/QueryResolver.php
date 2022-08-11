@@ -6,6 +6,7 @@ use Aggregate\Set;
 use Api\Pipeline\Pipes\Pipe;
 use Api\Result\Contracts\Record;
 use Api\Schema\Schema;
+use Oilstone\ApiTypesenseIntegration\Api\ResultSet;
 use Oilstone\ApiTypesenseIntegration\Query as QueryBuilder;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -60,15 +61,15 @@ class QueryResolver
 
     /**
      * @param ServerRequestInterface $request
-     * @return Set
+     * @return ResultSet
      */
-    public function collection(ServerRequestInterface $request): Set
+    public function collection(ServerRequestInterface $request): ResultSet
     {
         $parsedQuery = $request->getAttribute('parsedQuery');
         $limit = $parsedQuery->getLimit();
         $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
         $allRecordRetrieved = false;
-        $collection = new Set();
+        $collection = new ResultSet();
         $page = $limit ? (intval(ceil(($parsedQuery->getOffset() ?? 0) / $limit)) + 1) : 1;
 
         do {
@@ -78,9 +79,7 @@ class QueryResolver
                 $allRecordRetrieved = true;
             }
 
-            foreach ($batch->all() as $record) {
-                $collection->push($record);
-            }
+            $collection->append($batch);
 
             $page++;
         } while (!$allRecordRetrieved && (!$limit || $collection->count() < $limit));
