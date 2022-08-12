@@ -67,7 +67,7 @@ class QueryResolver
     {
         $parsedQuery = $request->getAttribute('parsedQuery');
         $limit = $parsedQuery->getLimit();
-        $offset = ($parsedQuery->getPage() ? intval($parsedQuery->getPage()) * intval($limit) : $parsedQuery->getOffset()) ?: 0;
+        $offset = ($parsedQuery->getPage() ? (intval($parsedQuery->getPage()) - 1) * intval($limit) : $parsedQuery->getOffset()) ?: 0;
         $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
         $page = $limit ? (intval(ceil(($offset) / $limit)) + 1) : 1;
         $allRecordRetrieved = false;
