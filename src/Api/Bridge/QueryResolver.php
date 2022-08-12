@@ -74,6 +74,7 @@ class QueryResolver
 
         $collection = (new ResultSet())->setMetaData([
             'from' => $offset,
+            'hits' => null,
             'outOf' => null,
             'pageNumber' => $parsedQuery->getPage() ?: $page,
             'perPage' => $limit ?: null,
@@ -99,6 +100,8 @@ class QueryResolver
             }
 
             $collection->append($batch);
+
+            $collection->addMetaData('hits', $collection->count());
 
             $page++;
         } while (!$allRecordRetrieved && (!$limit || $collection->count() < $limit));
