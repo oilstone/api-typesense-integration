@@ -67,16 +67,35 @@ class QueryResolver
     {
         $parsedQuery = $request->getAttribute('parsedQuery');
         $limit = $parsedQuery->getLimit();
+        $offset = ($parsedQuery->getPage() ? intval($parsedQuery->getPage()) * intval($limit) : $parsedQuery->getOffset()) ?: 0;
         $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
+        $page = $limit ? (intval(ceil(($offset) / $limit)) + 1) : 1;
         $allRecordRetrieved = false;
-        $collection = new ResultSet();
-        $page = $limit ? (intval(ceil(($parsedQuery->getOffset() ?? 0) / $limit)) + 1) : 1;
+
+        $collection = (new ResultSet())->setMetaData([
+            'from' => $offset,
+            'outOf' => null,
+            'pageNumber' => $parsedQuery->getPage() ?: $page,
+            'perPage' => $limit ?: null,
+            'to' => $limit ? $offset + $limit : null,
+            'total' => null,
+        ]);
 
         do {
             $batch = $this->resolve($this->baseQuery(), $request)->limit($requestLimit)->page($page);
 
             if (count($batch) < $requestLimit) {
                 $allRecordRetrieved = true;
+            }
+
+            $batchMeta = $batch->getMetaData();
+
+            $collection->addMetaData('outOf', $batchMeta['outOf']);
+            $collection->addMetaData('total', $batchMeta['total']);
+
+            if (!$limit) {
+                $collection->addMetaData('perPage', $batchMeta['total']);
+                $collection->addMetaData('to', $batchMeta['total']);
             }
 
             $collection->append($batch);

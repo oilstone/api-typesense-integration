@@ -3,10 +3,10 @@
 namespace Oilstone\ApiTypesenseIntegration\Api\Bridge;
 
 use Api\Queries\Expression;
-use Aggregate\Set;
 use Oilstone\ApiTypesenseIntegration\Query as BaseQuery;
 use Api\Queries\Relations as RequestRelations;
 use Oilstone\ApiTypesenseIntegration\Api\Record;
+use Oilstone\ApiTypesenseIntegration\Api\ResultSet;
 
 class Query
 {
@@ -43,17 +43,17 @@ class Query
     }
 
     /**
-     * @return Set
+     * @return ResultSet
      */
-    public function get(): Set
+    public function get(): ResultSet
     {
         return $this->baseQuery->get();
     }
 
     /**
-     * @return Set
+     * @return ResultSet
      */
-    public function page(int $page): Set
+    public function page(int $page): ResultSet
     {
         return $this->baseQuery->page($page);
     }

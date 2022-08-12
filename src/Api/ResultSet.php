@@ -24,11 +24,9 @@ class ResultSet extends Set implements Collection
      */
     public function append(ResultSet $merge): static
     {
-        $this->merge($merge->all());
+        $this->items = array_merge($this->items, $merge->all());
 
-        if ($existing = $this->getMetaData()) {
-            $this->addMetaData('total', ($merge->getMetaData()['total'] ?? 0) + ($existing['total'] ?? 0));
-        } else {
+        if (!$this->getMetaData()) {
             $this->setMetaData($merge->getMetaData());
         }
 

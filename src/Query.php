@@ -2,7 +2,6 @@
 
 namespace Oilstone\ApiTypesenseIntegration;
 
-use Aggregate\Set;
 use Api\Exceptions\InvalidQueryArgumentsException;
 use Api\Exceptions\UnknownOperatorException;
 use Api\Schema\Property;
@@ -191,23 +190,22 @@ class Query
     }
 
     /**
-     * @return Set
+     * @return ResultSet
      */
-    public function get(): Set
+    public function get(): ResultSet
     {
         return ResultSet::make($this->queryBuilder->get()->toArray());
     }
 
     /**
-     * @return Set
+     * @return ResultSet
      */
-    public function page(int $page): Set
+    public function page(int $page): ResultSet
     {
         $results = $this->queryBuilder->paginate($this->queryBuilder->limit, 'page', $page)->toArray();
 
         return ResultSet::make($results['data'], [
             'outOf' => $results['out_of'],
-            'perPage' => $results['per_page'],
             'total' => $results['total'],
         ]);
     }
