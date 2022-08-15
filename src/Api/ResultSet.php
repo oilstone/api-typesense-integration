@@ -42,6 +42,17 @@ class ResultSet extends Set implements Collection
     }
 
     /**
+     * @param iterable $items
+     * @return static
+     */
+    public function setItems(iterable $items): static
+    {
+        $this->items = $items;
+
+        return $this;
+    }
+
+    /**
      * @return iterable
      */
     public function getMetaData(): iterable

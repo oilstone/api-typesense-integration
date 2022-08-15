@@ -66,21 +66,43 @@ class QueryResolver
     public function collection(ServerRequestInterface $request): ResultSet
     {
         $parsedQuery = $request->getAttribute('parsedQuery');
-        $limit = $parsedQuery->getLimit();
-        $offset = ($parsedQuery->getPage() ? (intval($parsedQuery->getPage()) - 1) * intval($limit) : $parsedQuery->getOffset()) ?: 0;
-        $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
-        $page = $limit ? (intval(ceil(($offset) / $limit)) + 1) : 1;
-        $allRecordRetrieved = false;
+        $applyRandomSort = false;
 
-        $collection = (new ResultSet())->setMetaData([
-            'from' => $offset,
-            'hits' => null,
-            'outOf' => null,
-            'pageNumber' => $parsedQuery->getPage() ?: $page,
-            'perPage' => $limit ?: null,
-            'to' => $limit ? $offset + $limit : null,
-            'total' => null,
-        ]);
+        // If sorting by random, remove any applied limit and remove the sort value from the request
+        if (($parsedQuery->getSort()[0] ?? null)?->getPropertyName() === 'random') {
+            $applyRandomSort = true;
+            $parsedQuery->setSort([]);
+
+            $limit = null;
+            $page = 1;
+
+            $collection = (new ResultSet())->setMetaData([
+                'from' => 0,
+                'hits' => null,
+                'outOf' => null,
+                'pageNumber' => 1,
+                'perPage' => $parsedQuery->getLimit() ?: null,
+                'to' => $parsedQuery->getLimit() ?: null,
+                'total' => null,
+            ]);
+        } else {
+            $limit = $parsedQuery->getLimit();
+            $offset = ($parsedQuery->getPage() ? (intval($parsedQuery->getPage()) - 1) * intval($limit) : $parsedQuery->getOffset()) ?: 0;
+            $page = $limit ? (intval(ceil(($offset) / $limit)) + 1) : 1;
+
+            $collection = (new ResultSet())->setMetaData([
+                'from' => $offset,
+                'hits' => null,
+                'outOf' => null,
+                'pageNumber' => $parsedQuery->getPage() ?: $page,
+                'perPage' => $limit ?: null,
+                'to' => $limit ? $offset + $limit : null,
+                'total' => null,
+            ]);
+        }
+
+        $requestLimit = !$limit || $limit > static::$hardLimit ? static::$hardLimit : $limit;
+        $allRecordRetrieved = false;
 
         do {
             $batch = $this->resolve($this->baseQuery(), $request)->limit($requestLimit)->page($page);
@@ -105,6 +127,22 @@ class QueryResolver
 
             $page++;
         } while (!$allRecordRetrieved && (!$limit || $collection->count() < $limit));
+
+        if ($applyRandomSort) {
+            $results = (array) $collection->getItems();
+
+            shuffle($results);
+
+            if ($limit = $parsedQuery->getLimit()) {
+                $results = array_slice($results, 0, $limit);
+
+                $collection->addMetaData('hits', count($results));
+                $collection->addMetaData('perPage', $limit);
+                $collection->addMetaData('to', $limit - 1);
+            }
+
+            $collection->setItems($results);
+        }
 
         return $collection;
     }
