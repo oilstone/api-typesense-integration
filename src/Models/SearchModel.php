@@ -228,11 +228,12 @@ class SearchModel extends EloquentModel
             }
 
             $field = [
-                'name' => implode('.', array_filter([$property->prefix, $property->getName()])),
-                'type' => $transformType ? $this->transformType($property) : ($property->searchType ?? $property->getType()),
                 'facet' => $property->facet ?? false,
-                'optional' => $optional,
                 'index' => $searchable,
+                'name' => implode('.', array_filter([$property->prefix, $property->getName()])),
+                'optional' => $optional,
+                'sort' => $property->sortable ?? false,
+                'type' => $transformType ? $this->transformType($property) : ($property->searchType ?? $property->getType()),
             ];
 
             if ($includeProperty) {
