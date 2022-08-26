@@ -392,16 +392,20 @@ class TypesenseEngine extends Engine
     }
 
     /**
-     * @param string $name
-     * @param array  $options
+     * @param $model
      *
-     * @throws \Exception
+     * @throws \Typesense\Exceptions\TypesenseClientError
+     * @throws \Http\Client\Exception
      *
-     * @return void
+     * @return \Typesense\Collection
      */
-    public function createIndex($name, array $options = []): void
+    public function createIndex($name, $options = []): mixed
     {
-        throw new Exception('Typesense indexes are created automatically upon adding objects.');
+        if (!isset($options['model'])) {
+            return false;
+        }
+
+        return $this->typesense->getCollectionIndex($options['model']);
     }
 
     /**
