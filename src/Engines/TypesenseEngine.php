@@ -60,6 +60,11 @@ class TypesenseEngine extends Engine
     private array $locationOrderBy = [];
 
     /**
+     * @var bool
+     */
+    private bool $exhaustiveSearch = false;
+
+    /**
      * TypesenseEngine constructor.
      *
      * @param Typesense $typesense
@@ -151,6 +156,7 @@ class TypesenseEngine extends Engine
             'page'                => $page,
             'highlight_start_tag' => $this->startTag,
             'highlight_end_tag'   => $this->endTag,
+            'exhaustive_search'   => $this->exhaustiveSearch,
         ];
 
         if ($this->limitHits > 0) {
@@ -243,32 +249,35 @@ class TypesenseEngine extends Engine
      */
     protected function filters(Builder $builder): string
     {
-        $wheres = collect($builder->wheres)
+        $whereFilter = collect($builder->wheres)
             ->map([
                 $this,
-                'parseFilters',
-            ])->values();
+                'parseWhereFilter',
+            ])
+            ->values()
+            ->implode(' && ');
 
-        $whereIns = collect($builder->whereIns)
+        $whereInFilter = collect($builder->whereIns)
             ->map([
                 $this,
-                'parseInFilters',
-            ])->values();
+                'parseWhereInFilter',
+            ])
+            ->values()
+            ->implode(' && ');
 
-        return $wheres->merge($whereIns)->implode(' && ');
+		return $whereFilter . ' && ' . $whereInFilter;
     }
 
     /**
-     * Parse typesense filters.
+     * Parse typesense where filter.
      *
-     * @param array $where
+     * @param array|string $value
+     * @param string       $key
      *
      * @return string
      */
-    public function parseFilters(array $where): string
+    public function parseWhereFilter(array|string $value, string $key): string
     {
-        list($key, $value) = $where;
-
         if (is_array($value)) {
             return sprintf('%s:%s', $key, implode('', $value));
         }
@@ -277,20 +286,17 @@ class TypesenseEngine extends Engine
     }
 
     /**
-     * Parse typesense filters.
+     * Parse typesense  whereIn filter.
      *
-     * @param array|string $value
-     * @param string       $key
+     * @param array  $value
+     * @param string $key
      *
      * @return string
      */
-    public function parseInFilters(array $whereIn): string
+    public function parseWhereInFilter(array $value, string $key): string
     {
-        list($key, $values) = $whereIn;
-
-        return sprintf('%s:%s', $key, '[`' . implode('`,`', $values) . '`]');
+        return sprintf('%s:=%s', $key, '['. implode(', ', $value).']');
     }
-
 
     /**
      * @param mixed $results
@@ -498,6 +504,20 @@ class TypesenseEngine extends Engine
             'lng'       => $lng,
             'direction' => $direction,
         ];
+
+        return $this;
+    }
+
+    /**
+     * Setting this to true will make Typesense consider all variations of prefixes and typo corrections of the words in the query exhaustively.
+     *
+     * @param bool $exhaustiveSearch
+     *
+     * @return $this
+     */
+    public function exhaustiveSearch(bool $exhaustiveSearch): static
+    {
+        $this->exhaustiveSearch = $exhaustiveSearch;
 
         return $this;
     }
