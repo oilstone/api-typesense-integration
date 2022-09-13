@@ -276,8 +276,10 @@ class TypesenseEngine extends Engine
      *
      * @return string
      */
-    public function parseWhereFilter(array|string $value, string $key): string
+    public function parseWhereFilter(array $where): string
     {
+        list($key, $value) = $where;
+
         if (is_array($value)) {
             return sprintf('%s:%s', $key, implode('', $value));
         }
@@ -293,9 +295,11 @@ class TypesenseEngine extends Engine
      *
      * @return string
      */
-    public function parseWhereInFilter(array $value, string $key): string
+    public function parseWhereInFilter(array $whereIn): string
     {
-        return sprintf('%s:=%s', $key, '['. implode(', ', $value).']');
+        list($key, $value) = $whereIn;
+
+        return sprintf('%s:=%s', $key, '['. implode(', ', (array) $value).']');
     }
 
     /**
