@@ -556,6 +556,10 @@ class TypesenseEngine extends Engine
             return $token;
         }
 
+        if (in_array($token, ['true', 'false', '1', '0'])) {
+            return $token;
+        }
+
         return '`' . str_replace('`', '\`', $token) . '`';
     }
 }
