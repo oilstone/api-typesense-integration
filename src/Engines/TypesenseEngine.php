@@ -560,6 +560,10 @@ class TypesenseEngine extends Engine
             return $token;
         }
 
+        if (in_array(substr($token, -3), ['mi)', 'km)'])) {
+            return $token;
+        }
+
         return '`' . str_replace('`', '\`', $token) . '`';
     }
 }
