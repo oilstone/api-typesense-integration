@@ -5,6 +5,7 @@ namespace Oilstone\ApiTypesenseIntegration\Jobs;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Collection;
+use Typesense\Exceptions\ObjectNotFound;
 
 class RemoveFromSearch implements ShouldQueue
 {
@@ -36,6 +37,10 @@ class RemoveFromSearch implements ShouldQueue
             return;
         }
 
-        $this->models->first()->searchableUsing()->delete($this->models);
+        try {
+            $this->models->first()->searchableUsing()->delete($this->models);
+        } catch (ObjectNotFound) {
+            //
+        }
     }
 }
