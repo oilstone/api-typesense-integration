@@ -265,7 +265,7 @@ class TypesenseEngine extends Engine
             ->values()
             ->implode(' && ');
 
-		return $whereFilter . ' && ' . $whereInFilter;
+        return $whereFilter . ' && ' . $whereInFilter;
     }
 
     /**
@@ -281,10 +281,12 @@ class TypesenseEngine extends Engine
         list($key, $value) = $where;
 
         if (is_array($value)) {
-            return sprintf('%s:%s', $key, implode('', $value));
+            $operator = array_shift($value);
+
+            return sprintf('%s:%s%s', $key, $operator, implode('', $this->escapeSearchTerm($value)));
         }
 
-        return sprintf('%s:=%s', $key, $value);
+        return sprintf('%s:=%s', $key, $this->escapeSearchTerm($value));
     }
 
     /**
@@ -299,7 +301,7 @@ class TypesenseEngine extends Engine
     {
         list($key, $value) = $whereIn;
 
-        return sprintf('%s:=%s', $key, '['. implode(', ', (array) $value).']');
+        return sprintf('%s:=%s', $key, '[' . implode(', ', $this->escapeSearchTerm((array) $value)) . ']');
     }
 
     /**
@@ -538,5 +540,22 @@ class TypesenseEngine extends Engine
     public function deleteIndex($name): array
     {
         return $this->typesense->deleteCollection($name);
+    }
+
+    /**
+     * @param mixed $token
+     * @return mixed
+     */
+    protected function escapeSearchTerm(mixed $token): mixed
+    {
+        if (is_array($token)) {
+            return array_map(fn ($tokenSegment) => $this->escapeSearchTerm($tokenSegment), $token);
+        }
+
+        if (!is_string($token)) {
+            return $token;
+        }
+
+        return '`' . str_replace('`', '\`', $token) . '`';
     }
 }
