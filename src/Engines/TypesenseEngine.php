@@ -3,7 +3,6 @@
 namespace Oilstone\ApiTypesenseIntegration\Engines;
 
 use Oilstone\ApiTypesenseIntegration\Typesense;
-use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Arr;
@@ -181,6 +180,18 @@ class TypesenseEngine extends Engine
             $params['sort_by'] .= $this->parseOrderBy($builder->orders);
         }
 
+        if ($pinnedHits = $this->pinnedHits($builder)) {
+            $params['pinned_hits'] = $pinnedHits;
+
+            // NOTE: When filtering by pinned hits, pagination is disabled and the result set it specifically limited to the number of pinned hits
+            $params['page'] = 1;
+            $params['per_page'] = count($builder->pinnedHits);
+        }
+
+        if ($hiddenHits = $this->hiddenHits($builder)) {
+            $params['hidden_hits'] = $hiddenHits;
+        }
+
         return $params;
     }
 
@@ -265,7 +276,39 @@ class TypesenseEngine extends Engine
             ->values()
             ->implode(' && ');
 
-        return $whereFilter . ' && ' . $whereInFilter;
+        return implode(' && ', array_filter([$whereFilter, $whereInFilter]));
+    }
+
+    /**
+     * Prepare pinned hits.
+     *
+     * @param Builder $builder
+     *
+     * @return string
+     */
+    protected function pinnedHits(Builder $builder): string
+    {
+        if (!property_exists($builder, 'pinnedHits')) {
+            return '';
+        }
+
+        return implode(',', array_map(fn ($id, $index) => $id . ':' . ($index + 1), array_values($builder->pinnedHits), array_keys($builder->pinnedHits)));
+    }
+
+    /**
+     * Prepare hidden hits.
+     *
+     * @param Builder $builder
+     *
+     * @return string
+     */
+    protected function hiddenHits(Builder $builder): string
+    {
+        if (!property_exists($builder, 'hiddenHits')) {
+            return '';
+        }
+
+        return implode(',', $builder->hiddenHits);
     }
 
     /**
@@ -333,8 +376,8 @@ class TypesenseEngine extends Engine
             collect($results['hits'])
                 ->map(function (array $result) use ($model) {
                     $metaData = [
-                        'textMatch' => $result['text_match'],
-                        'highlights' => $result['highlights'],
+                        'textMatch' => $result['text_match'] ?? 100,
+                        'highlights' => $result['highlights'] ?? [],
                     ];
 
                     return SearchModel::make($model->getTable(), array_merge(Arr::undot($result['document']), ['meta' => $metaData]), $model->getSchema());

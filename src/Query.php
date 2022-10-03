@@ -101,6 +101,8 @@ class Query
         $field = $arguments[0];
         $value = $arguments[2] ?? $arguments[1];
         $operator = '=';
+        $allowPinnedHits = method_exists($this->queryBuilder, 'pinnedHits');
+        $allowHiddenHits = method_exists($this->queryBuilder, 'hiddenHits');
 
         if (count($arguments) === 3) {
             $operator = mb_strtolower($arguments[1]);
@@ -132,16 +134,28 @@ class Query
             case '=':
             case 'has':
             case 'contains':
-                $this->queryBuilder->where($fieldName, $value);
+                if ($fieldName === 'id' && $allowPinnedHits) {
+                    $this->queryBuilder->pinnedHits((array) $value);
+                } else {
+                    $this->queryBuilder->where($fieldName, $value);
+                }
                 break;
 
             case 'in':
-                $this->queryBuilder->whereIn($fieldName, $value);
+                if ($fieldName === 'id' && $allowPinnedHits) {
+                    $this->queryBuilder->pinnedHits((array) $value);
+                } else {
+                    $this->queryBuilder->whereIn($fieldName, $value);
+                }
                 break;
 
             case '!=':
             case 'has not':
-                $this->queryBuilder->where($fieldName, ['!=', $value]);
+                if ($fieldName === 'id' && $allowHiddenHits) {
+                    $this->queryBuilder->hiddenHits((array) $value);
+                } else {
+                    $this->queryBuilder->where($fieldName, ['!=', $value]);
+                }
                 break;
 
             case '>':
@@ -155,10 +169,14 @@ class Query
                 $this->queryBuilder->where($fieldName, ['', str_ireplace(['mi', 'km', ','], [' mi', ' km', ', '], preg_replace('/\s+/', '', '(' . implode(',', $value) . ')'))]);
                 break;
 
-                // Not currently supported
-                // case 'not in':
-                //     $this->queryBuilder->whereNotIn($fieldName, $value);
-                //     break;
+            // NOTE: `NOT IN` is not supported for any fields other than 'id' which is a Typesense reserved field
+            case 'not in':
+                if ($fieldName !== 'id' || !$allowHiddenHits) {
+                    throw new UnknownOperatorException($operator);
+                }
+
+                $this->queryBuilder->hiddenHits((array) $value);
+                break;
 
             default:
                 throw new UnknownOperatorException($operator);
