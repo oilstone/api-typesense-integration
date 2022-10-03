@@ -8,6 +8,21 @@ use Laravel\Scout\Builder as ScoutBuilder;
 
 class Builder extends ScoutBuilder
 {
+
+    /**
+     * The "pinned hits" constraints added to the query.
+     *
+     * @var array
+     */
+    public $pinnedHits = [];
+
+    /**
+     * The "hidden hits" constraints added to the query.
+     *
+     * @var array
+     */
+    public $hiddenHits = [];
+
     /**
      * Create a new search builder instance.
      *
@@ -52,6 +67,32 @@ class Builder extends ScoutBuilder
     public function whereIn($field, array $values)
     {
         $this->whereIns[] = [$field, $values];
+
+        return $this;
+    }
+
+    /**
+     * Add a "pinned hits" constraint to the search query.
+     *
+     * @param  array  $values
+     * @return $this
+     */
+    public function pinnedHits(array $values)
+    {
+        $this->pinnedHits = $values;
+
+        return $this;
+    }
+
+    /**
+     * Add a "hidden hits" constraint to the search query.
+     *
+     * @param  array  $values
+     * @return $this
+     */
+    public function hiddenHits(array $values)
+    {
+        $this->hiddenHits = $values;
 
         return $this;
     }
