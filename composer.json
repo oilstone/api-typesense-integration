@@ -52,7 +52,7 @@
     "illuminate/pagination": ">=7.0",
     "illuminate/queue": ">=7.0",
     "illuminate/support": ">=7.0",
-    "typesense/typesense-php": "^26.0",
+    "typesense/typesense-php": "^4.9",
     "garethhudson07/api": "^9.1"
   },
   "config": {
