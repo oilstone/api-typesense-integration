@@ -3,6 +3,7 @@
 namespace Oilstone\ApiTypesenseIntegration;
 
 use Illuminate\Container\Container;
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Pagination\Paginator as IlluminatePaginator;
 use Laravel\Scout\Builder as ScoutBuilder;
 
@@ -64,8 +65,12 @@ class Builder extends ScoutBuilder
      * @param  array  $values
      * @return $this
      */
-    public function whereIn($field, array $values)
+    public function whereIn($field, $values)
     {
+        if ($values instanceof Arrayable) {
+            $values = $values->toArray();
+        }
+
         $this->whereIns[] = [$field, $values];
 
         return $this;
@@ -236,7 +241,9 @@ class Builder extends ScoutBuilder
         $perPage = $perPage ?: $this->model->getPerPage();
 
         $results = $this->model->newCollection($engine->map(
-            $this, $rawResults = $engine->paginate($this, $perPage, $page), $this->model
+            $this,
+            $rawResults = $engine->paginate($this, $perPage, $page),
+            $this->model
         )->all());
 
         return Container::getInstance()->makeWith(Paginator::class, [
