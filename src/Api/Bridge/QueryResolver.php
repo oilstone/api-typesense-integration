@@ -2,7 +2,6 @@
 
 namespace Oilstone\ApiTypesenseIntegration\Api\Bridge;
 
-use Aggregate\Set;
 use Api\Pipeline\Pipes\Pipe;
 use Api\Result\Contracts\Record;
 use Api\Schema\Schema;
@@ -176,14 +175,14 @@ class QueryResolver
      */
     public function baseQuery(string $search = '*'): QueryBuilder
     {
-        $this->queryBuilder = new QueryBuilder($this->contentType, $this->schema, $search);
+        $queryBuilder = new QueryBuilder($this->contentType, $this->schema, $search);
 
         if ($this->pipe->isScoped()) {
             $scope = $this->pipe->getScope();
 
-            return $this->queryBuilder->where($scope->getKey(), $scope->getValue());
+            return $queryBuilder->where($scope->getKey(), $scope->getValue());
         }
 
-        return $this->queryBuilder;
+        return $queryBuilder;
     }
 }
