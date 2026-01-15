@@ -30,9 +30,6 @@ class SearchModel extends EloquentModel
      */
     public $incrementing = false;
 
-    /**
-     * @var Schema|null
-     */
     protected ?Schema $schema;
 
     /**
@@ -42,22 +39,10 @@ class SearchModel extends EloquentModel
      */
     protected $guarded = false;
 
-    /**
-     * @var array
-     */
     protected array $queryBy = [];
 
-    /**
-     * @var string
-     */
     public string $additionalIndexKey = 'extraIndex';
 
-    /**
-     * @param string $type
-     * @param array $attributes
-     * @param Schema|null $schema
-     * @return static
-     */
     public static function make(string $type, array $attributes = [], ?Schema $schema = null, array $queryBy = []): static
     {
         return (new static($attributes))
@@ -73,7 +58,7 @@ class SearchModel extends EloquentModel
      */
     public function toSearchableArray()
     {
-        if (!$this->schema) {
+        if (! $this->schema) {
             return [];
         }
 
@@ -83,7 +68,7 @@ class SearchModel extends EloquentModel
         foreach ($this->getIndexFields(false, true) as $field) {
             $value = Arr::get($values, $field['name']);
 
-            if (isset($value) || !$field['optional']) {
+            if (isset($value) || ! $field['optional']) {
                 switch ($field['type']) {
                     case 'integer':
                         $value = intval($value ?: 0);
@@ -105,7 +90,7 @@ class SearchModel extends EloquentModel
                     case 'timestamp':
                     case 'date':
                     case 'datetime':
-                        if (!$value && ($field['property'] ?? null)?->hasMeta('nullDate')) {
+                        if (! $value && ($field['property'] ?? null)?->hasMeta('nullDate')) {
                             $value = $field['property']->nullDate;
                         }
 
@@ -125,8 +110,6 @@ class SearchModel extends EloquentModel
 
     /**
      * The Typesense schema to be created.
-     *
-     * @return array
      */
     public function getCollectionSchema(): array
     {
@@ -139,8 +122,6 @@ class SearchModel extends EloquentModel
 
     /**
      * The fields to be queried against. See https://typesense.org/docs/0.21.0/api/documents.html#search.
-     *
-     * @return array
      */
     public function typesenseQueryBy(bool $returnWeights = false): array
     {
@@ -165,8 +146,6 @@ class SearchModel extends EloquentModel
 
     /**
      * Get the value of schema
-     *
-     * @return Schema
      */
     public function getSchema(): ?Schema
     {
@@ -175,9 +154,6 @@ class SearchModel extends EloquentModel
 
     /**
      * Set the value of schema
-     *
-     * @param Schema|null  $schema
-     * @return static
      */
     public function setSchema(?Schema $schema): static
     {
@@ -186,18 +162,11 @@ class SearchModel extends EloquentModel
         return $this;
     }
 
-    /**
-     * @return array
-     */
     public function getQueryBy(): array
     {
         return $this->queryBy;
     }
 
-    /**
-     * @param array $queryBy
-     * @return static
-     */
     public function setQueryBy(array $queryBy): static
     {
         $this->queryBy = $queryBy;
@@ -205,21 +174,18 @@ class SearchModel extends EloquentModel
         return $this;
     }
 
-    /**
-     * @return array
-     */
     protected function getIndexFields(bool $transformType = true, bool $includeProperty = false, bool $includePriority = false): array
     {
-        if (!$this->schema) {
+        if (! $this->schema) {
             return [];
         }
 
-        return array_merge(array_map(function (Property $property) use ($transformType, $includeProperty, $includePriority) {
+        $fields = array_map(function (Property $property) use ($transformType, $includeProperty, $includePriority) {
             $optional = $property->optional ?? false;
             $searchable = $property->searchable ?? false;
             $isDefaultSort = $property->defaultSort ?? false;
 
-            if (!$searchable) {
+            if (! $searchable) {
                 $optional = true;
             }
 
@@ -245,20 +211,31 @@ class SearchModel extends EloquentModel
             }
 
             return $field;
-        }, $this->getIndexProperties($this->schema)), [
-            [
+        }, $this->getIndexProperties($this->schema));
+
+        $hasAdditionalKey = false;
+
+        foreach ($fields as $field) {
+            if (($field['name'] ?? null) === $this->additionalIndexKey) {
+                $hasAdditionalKey = true;
+                break;
+            }
+        }
+
+        if (! $hasAdditionalKey) {
+            $fields[] = [
                 'name' => $this->additionalIndexKey,
                 'type' => 'string',
                 'facet' => false,
                 'optional' => true,
                 'index' => true,
-            ],
-        ]);
+            ];
+        }
+
+        return $fields;
+
     }
 
-    /**
-     * @return array
-     */
     protected function getIndexProperties(Schema $schema, ?string $prefix = null): array
     {
         $properties = [];
@@ -268,6 +245,7 @@ class SearchModel extends EloquentModel
 
             if ($property->getAccepts()) {
                 $properties = array_merge($properties, $this->getIndexProperties($property->getAccepts(), implode('.', array_filter([$property->prefix, $property->getName()])) ?: null));
+
                 continue;
             }
 
@@ -279,9 +257,6 @@ class SearchModel extends EloquentModel
         return $properties;
     }
 
-    /**
-     * @return string|null
-     */
     protected function getSortingField(): ?string
     {
         foreach ($this->schema?->getProperties() ?? [] as $property) {
@@ -295,18 +270,12 @@ class SearchModel extends EloquentModel
 
     /**
      * Get the index name for the model.
-     *
-     * @return string
      */
     public function searchableAs(): string
     {
-        return Config::get('scout.prefix') . $this->getTable();
+        return Config::get('scout.prefix').$this->getTable();
     }
 
-    /**
-     * @param Property $property
-     * @return string
-     */
     protected function transformType(Property $property): string
     {
         if ($property->hasMeta('searchType')) {
@@ -337,12 +306,6 @@ class SearchModel extends EloquentModel
 
     /**
      * Perform a search against the model's indexed data.
-     *
-     * @param string $type
-     * @param Schema|null $schema
-     * @param mixed $query
-     * @param mixed $callback
-     * @return Builder
      */
     public static function search(string $type, ?Schema $schema = null, mixed $query = '', mixed $callback = null, array $queryBy = []): Builder
     {
