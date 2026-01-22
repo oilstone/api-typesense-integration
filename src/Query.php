@@ -127,6 +127,10 @@ class Query
                 case 'boolean':
                     $value = boolval($value ?: false) ? 'true' : 'false';
                     break;
+
+                case 'integer':
+                    $value = intval($value);
+                    break;
             }
         }
 
