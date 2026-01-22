@@ -103,6 +103,7 @@ class Query
         $operator = '=';
         $allowPinnedHits = method_exists($this->queryBuilder, 'pinnedHits');
         $allowHiddenHits = method_exists($this->queryBuilder, 'hiddenHits');
+        $fieldName = is_string($field) ? $field : $field->getName();
 
         if (count($arguments) === 3) {
             $operator = mb_strtolower($arguments[1]);
@@ -111,9 +112,10 @@ class Query
         if (
             $this->schema &&
             is_string($field) &&
-            $property = Arr::first($this->schema->getProperties(), fn (Property $property) => $property->getName() === $field || $property->alias === $field)
+            $resolvedProperty = $this->resolveSchemaProperty($field)
         ) {
-            $field = $property;
+            $field = $resolvedProperty['property'];
+            $fieldName = $resolvedProperty['fieldName'];
 
             switch ($field->getType()) {
                 case 'date':
@@ -127,8 +129,6 @@ class Query
                     break;
             }
         }
-
-        $fieldName = is_string($field) ? $field : $field->getName();
 
         switch ($operator) {
             case '=':
@@ -183,6 +183,48 @@ class Query
         }
 
         return $this;
+    }
+
+    /**
+     * @return array{property: Property, fieldName: string}|null
+     */
+    protected function resolveSchemaProperty(string $field): ?array
+    {
+        $schema = $this->schema;
+
+        if (! $schema) {
+            return null;
+        }
+
+        $segments = explode('.', $field);
+        $resolvedSegments = [];
+        $property = null;
+
+        foreach ($segments as $index => $segment) {
+            $property = Arr::first(
+                $schema->getProperties(),
+                fn (Property $property) => $property->getName() === $segment || $property->alias === $segment
+            );
+
+            if (! $property) {
+                return null;
+            }
+
+            $resolvedSegments[] = $property->getName();
+
+            if ($index < count($segments) - 1) {
+                $schema = $property->getAccepts();
+
+                if (! $schema) {
+                    return null;
+                }
+            }
+        }
+
+        return [
+            'property' => $property,
+            'fieldName' => implode('.', $resolvedSegments),
+        ];
     }
 
     /**
