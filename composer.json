@@ -44,20 +44,20 @@
     }
   },
   "require": {
-    "php": "^8.2",
-    "laravel/scout": "^10.0",
-    "illuminate/bus": ">=7.0",
-    "illuminate/contracts": ">=7.0",
-    "illuminate/database": ">=7.0",
-    "illuminate/pagination": ">=7.0",
-    "illuminate/queue": ">=7.0",
-    "illuminate/support": ">=7.0",
-    "typesense/typesense-php": "^4.9",
-    "garethhudson07/api": "^9.1"
+    "php": "^8.5",
+    "illuminate/bus": ">=12.0",
+    "illuminate/contracts": ">=12.0",
+    "illuminate/database": ">=12.0",
+    "illuminate/pagination": ">=12.0",
+    "illuminate/queue": ">=12.0",
+    "illuminate/support": ">=12.0",
+    "typesense/typesense-php": "^6.0",
+    "laravel/scout": "^11.2",
+    "garethhudson07/api": "^9.6"
   },
   "config": {
     "platform": {
-      "php": "8.2"
+      "php": "8.5"
     },
     "allow-plugins": {
       "php-http/discovery": true
