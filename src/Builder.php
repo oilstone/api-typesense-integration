@@ -47,13 +47,22 @@ class Builder extends ScoutBuilder
     /**
      * Add a constraint to the search query.
      *
+     * Supports the package's existing two-argument form:
+     *   where($field, $value)              // exact match
+     *   where($field, [$operator, $value]) // operator match
+     * as well as Scout's three-argument form:
+     *   where($field, $operator, $value)
+     *
      * @param  string  $field
+     * @param  mixed  $operator
      * @param  mixed  $value
      * @return $this
      */
-    public function where($field, $value)
+    public function where($field, $operator, $value = null)
     {
-        $this->wheres[] = [$field, $value];
+        $this->wheres[] = func_num_args() >= 3
+            ? [$field, [$operator, $value]]
+            : [$field, $operator];
 
         return $this;
     }
