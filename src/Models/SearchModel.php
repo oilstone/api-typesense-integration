@@ -261,7 +261,7 @@ class SearchModel extends EloquentModel
                 'name' => $name,
                 'type' => $type,
                 'facet' => $property->facet ?? false,
-                'optional' => $this->isOptional($property),
+                'optional' => $prefix !== null ? true : $this->isOptional($property),
                 'index' => $property->searchable ?? false,
                 'sort' => $property->sortable ?? false,
                 'priority' => $property->searchPriority ?? 1,
