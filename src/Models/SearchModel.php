@@ -62,50 +62,112 @@ class SearchModel extends EloquentModel
             return [];
         }
 
-        $attributes = [];
         $values = $this->getAttributes();
+        $document = $this->buildSearchableData($this->schema, $values);
 
-        foreach ($this->getIndexFields(false, true) as $field) {
-            $value = Arr::get($values, $field['name']);
+        $extra = Arr::get($values, $this->additionalIndexKey);
 
-            if (isset($value) || ! $field['optional']) {
-                switch ($field['type']) {
-                    case 'integer':
-                        $value = intval($value ?: 0);
-                        break;
-
-                    case 'float':
-                    case 'decimal':
-                        $value = floatval($value ?: 0.0);
-                        break;
-
-                    case 'boolean':
-                        $value = boolval($value ?: false);
-                        break;
-
-                    case 'string[]':
-                        $value = is_array($value) ? $value : [];
-                        break;
-
-                    case 'timestamp':
-                    case 'date':
-                    case 'datetime':
-                        if (! $value && ($field['property'] ?? null)?->hasMeta('nullDate')) {
-                            $value = $field['property']->nullDate;
-                        }
-
-                        $value = $value ? Carbon::parse($value)->unix() : 0;
-                        break;
-
-                    default:
-                        $value = $value ?: '';
-                }
-            }
-
-            $attributes[$field['name']] = $value;
+        if (isset($extra)) {
+            $document[$this->additionalIndexKey] = is_string($extra) ? $extra : (string) $extra;
         }
 
-        return $attributes;
+        return $document;
+    }
+
+    /**
+     * Recursively build the nested searchable document for a schema, applying
+     * the same per-type value coercion as before at the leaves.
+     */
+    protected function buildSearchableData(Schema $schema, array $values): array
+    {
+        $data = [];
+
+        foreach ($schema->getProperties() as $property) {
+            $name = $property->getName();
+            $accepts = $property->getAccepts();
+
+            if ($accepts instanceof Schema) {
+                // Skip containers with nothing indexable beneath them.
+                if (! $this->hasIndexableLeaf($accepts)) {
+                    continue;
+                }
+
+                $nested = Arr::get($values, $name);
+
+                if ($this->isCollection($property)) {
+                    if (! is_array($nested)) {
+                        continue;
+                    }
+
+                    $data[$name] = array_values(array_map(
+                        fn ($item) => $this->buildSearchableData($accepts, is_array($item) ? $item : []),
+                        $nested
+                    ));
+                } else {
+                    if (! is_array($nested)) {
+                        continue;
+                    }
+
+                    $data[$name] = $this->buildSearchableData($accepts, $nested);
+                }
+
+                continue;
+            }
+
+            if (! ($property->indexed || $property->searchable)) {
+                continue;
+            }
+
+            $optional = $this->isOptional($property);
+            $value = Arr::get($values, $name);
+
+            // Omit absent optional leaves rather than sending null. Typesense
+            // v29+ rejects null in non-optional fields; omitting absent values
+            // keeps upserts clean and avoids that validation edge case.
+            if (! isset($value) && $optional) {
+                continue;
+            }
+
+            $data[$name] = $this->coerceLeafValue($property, $value);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Coerce a leaf value to the type Typesense expects, keyed on the raw
+     * (pre-transform) schema type, mirroring the previous behaviour.
+     */
+    protected function coerceLeafValue(Property $property, mixed $value): mixed
+    {
+        $rawType = $property->searchType ?? $property->getType();
+
+        switch ($rawType) {
+            case 'integer':
+                return intval($value ?: 0);
+
+            case 'float':
+            case 'decimal':
+                return floatval($value ?: 0.0);
+
+            case 'boolean':
+                return boolval($value ?: false);
+
+            case 'string[]':
+                return is_array($value) ? $value : [];
+
+            case 'timestamp':
+            case 'date':
+            case 'datetime':
+                if (! $value && $property->hasMeta('nullDate')) {
+                    $value = $property->nullDate;
+                }
+
+                return $value ? Carbon::parse($value)->unix() : 0;
+
+            default:
+                return $value ?: '';
+        }
     }
 
     /**
@@ -113,15 +175,109 @@ class SearchModel extends EloquentModel
      */
     public function getCollectionSchema(): array
     {
+        if (! $this->schema) {
+            return array_filter([
+                'name' => $this->searchableAs(),
+                'fields' => [$this->additionalIndexField()],
+                'enable_nested_fields' => true,
+            ]);
+        }
+
+        $fields = $this->collectFields($this->schema);
+
+        if (! $this->fieldsContain($fields, $this->additionalIndexKey)) {
+            $fields[] = $this->additionalIndexField();
+        }
+
+        // Strip the internal helper keys before handing the schema to Typesense.
+        $fields = array_map(fn (array $field) => Arr::only($field, [
+            'name', 'type', 'facet', 'optional', 'index', 'sort',
+        ]), $fields);
+
         return array_filter([
             'name' => $this->searchableAs(),
-            'fields' => $this->getIndexFields(),
+            'fields' => $fields,
             'default_sorting_field' => $this->getSortingField(),
+            'enable_nested_fields' => true,
         ]);
     }
 
     /**
-     * The fields to be queried against. See https://typesense.org/docs/0.21.0/api/documents.html#search.
+     * Recursively collect Typesense field descriptors for a schema.
+     *
+     * Nested objects are declared as `object` / `object[]` parents (so
+     * enable_nested_fields can index their sub-fields) plus explicitly typed
+     * leaf sub-fields addressed by dot notation. Leaves beneath an
+     * array-of-objects ancestor are declared with array types (e.g. string[]).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function collectFields(Schema $schema, ?string $prefix = null, bool $inCollection = false): array
+    {
+        $fields = [];
+
+        foreach ($schema->getProperties() as $property) {
+            $name = implode('.', array_filter([$prefix, $property->getName()]));
+            $accepts = $property->getAccepts();
+
+            if ($accepts instanceof Schema) {
+                $isCollection = $this->isCollection($property);
+
+                $childFields = $this->collectFields($accepts, $name, $inCollection || $isCollection);
+
+                // Only declare the container (and descend) if it actually has
+                // indexable leaves; this preserves selective indexing.
+                if (! $childFields) {
+                    continue;
+                }
+
+                $fields[] = [
+                    'name' => $name,
+                    'type' => $isCollection ? 'object[]' : 'object',
+                    'facet' => false,
+                    'optional' => true,
+                    'index' => true,
+                    'sort' => false,
+                    'priority' => $property->searchPriority ?? 1,
+                    'object' => true,
+                ];
+
+                $fields = array_merge($fields, $childFields);
+
+                continue;
+            }
+
+            if (! ($property->indexed || $property->searchable)) {
+                continue;
+            }
+
+            $type = $this->transformType($property);
+
+            if ($inCollection && ! str_ends_with($type, '[]')) {
+                $type .= '[]';
+            }
+
+            $fields[] = [
+                'name' => $name,
+                'type' => $type,
+                'facet' => $property->facet ?? false,
+                'optional' => $prefix !== null ? true : $this->isOptional($property),
+                'index' => $property->searchable ?? false,
+                'sort' => $property->sortable ?? false,
+                'priority' => $property->searchPriority ?? 1,
+                'object' => false,
+            ];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * The fields to be queried against.
+     *
+     * Auto-selects searchable string (and nested string[]) leaves, ordered by
+     * search priority, plus the additional index field. An explicit queryBy
+     * still short-circuits this.
      */
     public function typesenseQueryBy(bool $returnWeights = false): array
     {
@@ -135,11 +291,27 @@ class SearchModel extends EloquentModel
             return $this->queryBy;
         }
 
-        $columns = array_map(fn (array $column) => array_merge(['priority' => 1], $column), array_filter($this->getIndexFields(true, false, true), fn (array $field) => $field['index'] && $field['type'] === 'string'));
+        if (! $this->schema) {
+            return [];
+        }
 
-        usort($columns, function ($column1, $column2) {
-            return $column2['priority'] <=> $column1['priority'];
-        });
+        $columns = array_values(array_filter(
+            $this->collectFields($this->schema),
+            fn (array $field) => ! $field['object']
+                && $field['index']
+                && in_array($field['type'], ['string', 'string[]'], true)
+        ));
+
+        // Keep the denormalised extra-index field searchable.
+        $columns[] = [
+            'name' => $this->additionalIndexKey,
+            'type' => 'string',
+            'index' => true,
+            'priority' => 1,
+            'object' => false,
+        ];
+
+        usort($columns, fn ($a, $b) => ($b['priority'] ?? 1) <=> ($a['priority'] ?? 1));
 
         return array_column($columns, $returnWeights ? 'priority' : 'name');
     }
@@ -174,87 +346,89 @@ class SearchModel extends EloquentModel
         return $this;
     }
 
-    protected function getIndexFields(bool $transformType = true, bool $includeProperty = false, bool $includePriority = false): array
+    /**
+     * Whether a property represents an array of objects (object[]) rather than
+     * a single nested object (object).
+     */
+    protected function isCollection(Property $property): bool
     {
-        if (! $this->schema) {
-            return [];
-        }
-
-        $fields = array_map(function (Property $property) use ($transformType, $includeProperty, $includePriority) {
-            $optional = $property->optional ?? false;
-            $searchable = $property->searchable ?? false;
-            $isDefaultSort = $property->defaultSort ?? false;
-
-            if (! $searchable) {
-                $optional = true;
-            }
-
-            if ($isDefaultSort) {
-                $optional = false;
-            }
-
-            $field = [
-                'facet' => $property->facet ?? false,
-                'index' => $searchable,
-                'name' => implode('.', array_filter([$property->prefix, $property->getName()])),
-                'optional' => $optional,
-                'sort' => $property->sortable ?? false,
-                'type' => $transformType ? $this->transformType($property) : ($property->searchType ?? $property->getType()),
-            ];
-
-            if ($includeProperty) {
-                $field['property'] = $property;
-            }
-
-            if ($includePriority) {
-                $field['priority'] = $property->searchPriority ?? 1;
-            }
-
-            return $field;
-        }, $this->getIndexProperties($this->schema));
-
-        $hasAdditionalKey = false;
-
-        foreach ($fields as $field) {
-            if (($field['name'] ?? null) === $this->additionalIndexKey) {
-                $hasAdditionalKey = true;
-                break;
-            }
-        }
-
-        if (! $hasAdditionalKey) {
-            $fields[] = [
-                'name' => $this->additionalIndexKey,
-                'type' => 'string',
-                'facet' => false,
-                'optional' => true,
-                'index' => true,
-            ];
-        }
-
-        return $fields;
-
+        return $property->getType() === 'collection';
     }
 
-    protected function getIndexProperties(Schema $schema, ?string $prefix = null): array
+    /**
+     * Resolve the optional flag for a leaf property, mirroring the original
+     * rules: non-searchable fields are optional; default-sort fields are not.
+     */
+    protected function isOptional(Property $property): bool
     {
-        $properties = [];
+        $optional = $property->optional ?? false;
 
+        if (! ($property->searchable ?? false)) {
+            $optional = true;
+        }
+
+        if ($property->defaultSort ?? false) {
+            $optional = false;
+        }
+
+        return $optional;
+    }
+
+    /**
+     * Whether a (possibly deeply nested) schema has any indexable leaf.
+     */
+    protected function hasIndexableLeaf(Schema $schema): bool
+    {
         foreach ($schema->getProperties() as $property) {
-            $property->meta('prefix', $prefix);
+            $accepts = $property->getAccepts();
 
-            if ($property->getAccepts()) {
-                $properties = array_merge($properties, $this->getIndexProperties($property->getAccepts(), implode('.', array_filter([$property->prefix, $property->getName()])) ?: null));
+            if ($accepts instanceof Schema) {
+                if ($this->hasIndexableLeaf($accepts)) {
+                    return true;
+                }
 
                 continue;
             }
 
             if ($property->indexed || $property->searchable) {
-                $properties[] = $property;
+                return true;
             }
         }
 
-        return $properties;
+        return false;
+    }
+
+    /**
+     * The descriptor for the additional (denormalised) index field.
+     *
+     * @return array<string, mixed>
+     */
+    protected function additionalIndexField(): array
+    {
+        return [
+            'name' => $this->additionalIndexKey,
+            'type' => 'string',
+            'facet' => false,
+            'optional' => true,
+            'index' => true,
+            'sort' => false,
+            'priority' => 1,
+            'object' => false,
+        ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $fields
+     */
+    protected function fieldsContain(array $fields, string $name): bool
+    {
+        foreach ($fields as $field) {
+            if (($field['name'] ?? null) === $name) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function getSortingField(): ?string
