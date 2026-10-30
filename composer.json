@@ -55,6 +55,14 @@
     "laravel/scout": "^11.2",
     "garethhudson07/api": "^9.6"
   },
+  "require-dev": {
+    "oilstone/system-status": "^2.0.0-beta.3",
+    "guzzlehttp/guzzle": "^7.12"
+  },
+  "suggest": {
+    "oilstone/system-status": "Enables the Typesense health check monitor",
+    "guzzlehttp/guzzle": "Required by the Typesense monitor, and gives the Typesense client timeouts"
+  },
   "config": {
     "platform": {
       "php": "8.5"
