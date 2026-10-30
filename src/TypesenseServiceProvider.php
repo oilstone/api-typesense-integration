@@ -2,16 +2,19 @@
 
 namespace Oilstone\ApiTypesenseIntegration;
 
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Scout\Builder as ScoutBuilder;
 use Laravel\Scout\EngineManager;
 use Laravel\Scout\Scout;
 use Oilstone\ApiTypesenseIntegration\Engines\TypesenseEngine;
+use Oilstone\ApiTypesenseIntegration\Integrations\SystemStatus\TypesenseMonitor;
 use Oilstone\ApiTypesenseIntegration\Jobs\MakeSearchable;
 use Oilstone\ApiTypesenseIntegration\Jobs\RemoveFromSearch;
 use Oilstone\RsqlParser\Operators;
 use Oilstone\RsqlParser\Operators\Operator;
+use Oilstone\SystemStatus\SystemStatus;
 use Typesense\Client;
 
 /**
@@ -38,11 +41,18 @@ class TypesenseServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->app[EngineManager::class]->extend('typesense', static function ($app) {
-            $client = new Client(Config::get('scout.typesense'));
+        // The manager rebinds extend() callbacks to itself, so the client factory is passed in
+        $makeClient = $this->makeClient(...);
 
-            return new TypesenseEngine(new Typesense($client));
+        $this->app[EngineManager::class]->extend('typesense', static function ($app) use ($makeClient) {
+            return new TypesenseEngine(new Typesense($makeClient()));
         });
+
+        if (class_exists(SystemStatus::class)) {
+            $this->callAfterResolving(SystemStatus::class, static function (SystemStatus $status) {
+                $status->extend('typesense', TypesenseMonitor::class);
+            });
+        }
     }
 
     /**
@@ -50,10 +60,8 @@ class TypesenseServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(Typesense::class, static function () {
-            $client = new Client(Config::get('scout.typesense'));
-
-            return new Typesense($client);
+        $this->app->singleton(Typesense::class, function () {
+            return new Typesense($this->makeClient());
         });
 
         $this->app->alias(Typesense::class, 'typesense');
@@ -76,5 +84,29 @@ class TypesenseServiceProvider extends ServiceProvider
             protected $sql = 'near';
             protected $expectsArray = true;
         });
+    }
+
+    /**
+     * Build a client from scout.typesense. typesense-php no longer applies any timeouts, so when
+     * Guzzle is installed and no client is configured, it is given one with connection_timeout_seconds
+     * as its connect timeout (default 1, as typesense-php used to apply) and request_timeout_seconds
+     * as its request timeout (no limit by default, so large imports aren't cut off).
+     *
+     * @throws \Typesense\Exceptions\ConfigError
+     *
+     * @return \Typesense\Client
+     */
+    protected function makeClient(): Client
+    {
+        $config = Config::get('scout.typesense');
+
+        if (!isset($config['client']) && class_exists(GuzzleClient::class)) {
+            $config['client'] = new GuzzleClient(array_filter([
+                'connect_timeout' => $config['connection_timeout_seconds'] ?? 1,
+                'timeout'         => $config['request_timeout_seconds'] ?? null,
+            ], static fn ($value) => $value !== null));
+        }
+
+        return new Client($config);
     }
 }
